@@ -1,0 +1,12 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Each signed-in person can read and write only their own log, stored under users/<their id>/docs.
+    match /users/{userId}/docs/{docId} {
+      allow read, delete: if request.auth != null && request.auth.uid == userId;
+      allow create, update: if request.auth != null && request.auth.uid == userId
+        && docId.matches('^(prefs|treatments|letter|days-[0-9]{4}-[0-9]{2}|journal-[0-9]{4}-[0-9]{2})$');
+    }
+    // Every other path is closed by default.
+  }
+}

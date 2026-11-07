@@ -1,0 +1,1464 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tidemark PMDD Tracker</title>
+<meta name="description" content="A private daily tracker for PMDD symptoms, cycles, treatments and patterns.">
+<meta name="theme-color" content="#17595F">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" type="image/png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Tidemark">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  /* Tidemark: sea-salt ground, ink type, a plum "tide" for symptom severity, rose only for bleeding.
+     Layout: one-screen app; the cycle dial is the hero; bottom tabs on phones, top tabs on wide screens. */
+  --bg:#ECF1F0; --surface:#FFFFFF; --surface2:#F4F7F6; --ink:#10202A; --muted:#4A5C64; --line:#C5D1D0;
+  --accent:#17595F; --accent-ink:#FFFFFF; --accent-soft:#D8E9E7;
+  --rose:#B0214A; --rose-ink:#FFFFFF; --rose-soft:#F7DFE5; --gold:#8E6100;
+  --sev1:#E4E9EC; --sev2:#D8D2EC; --sev3:#BBAEE0; --sev4:#9580CB; --sev5:#6A4CA9; --sev6:#42227A;
+  --sevt1:#10202A; --sevt2:#10202A; --sevt3:#10202A; --sevt4:#10202A; --sevt5:#FFFFFF; --sevt6:#FFFFFF;
+  --display:"Bricolage Grotesque","Avenir Next","Segoe UI",system-ui,sans-serif;
+  --body:"Atkinson Hyperlegible",Verdana,"Segoe UI",system-ui,sans-serif;
+  --radius:.875rem;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B161B; --surface:#12222A; --surface2:#172B33; --ink:#E3ECEC; --muted:#9BB0B4; --line:#2A414A;
+    --accent:#6CC6C1; --accent-ink:#06211F; --accent-soft:#163A3C;
+    --rose:#F27D9C; --rose-ink:#2A0712; --rose-soft:#3A1E28; --gold:#E6B84B;
+    --sev1:#1E2E36; --sev2:#2F3558; --sev3:#483F7E; --sev4:#6B55AC; --sev5:#9C82DA; --sev6:#D0BBFF;
+    --sevt1:#E3ECEC; --sevt2:#E3ECEC; --sevt3:#FFFFFF; --sevt4:#FFFFFF; --sevt5:#0B161B; --sevt6:#0B161B;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B161B; --surface:#12222A; --surface2:#172B33; --ink:#E3ECEC; --muted:#9BB0B4; --line:#2A414A;
+  --accent:#6CC6C1; --accent-ink:#06211F; --accent-soft:#163A3C;
+  --rose:#F27D9C; --rose-ink:#2A0712; --rose-soft:#3A1E28; --gold:#E6B84B;
+  --sev1:#1E2E36; --sev2:#2F3558; --sev3:#483F7E; --sev4:#6B55AC; --sev5:#9C82DA; --sev6:#D0BBFF;
+  --sevt1:#E3ECEC; --sevt2:#E3ECEC; --sevt3:#FFFFFF; --sevt4:#FFFFFF; --sevt5:#0B161B; --sevt6:#0B161B;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;background:var(--bg);color:var(--ink);font:400 1rem/1.55 var(--body);-webkit-font-smoothing:antialiased}
+h1,h2,h3{font-family:var(--display);line-height:1.15;margin:0;text-wrap:balance;font-weight:700;letter-spacing:-.01em}
+h1{font-size:1.75rem;font-weight:800;letter-spacing:-.025em}
+h2{font-size:1.25rem}
+h3{font-size:1.0625rem}
+p{margin:0}
+ul{margin:0;padding-left:1.25rem}
+a{color:var(--accent);text-underline-offset:.15em}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px;border-radius:6px}
+h1:focus{outline:none}
+.sr-only{position:absolute!important;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.muted{color:var(--muted)}
+.small{font-size:.875rem}
+.between{justify-content:space-between}
+.row{display:flex;flex-wrap:wrap;gap:.5rem;align-items:center}
+.stack{display:flex;flex-direction:column;gap:1rem;min-width:0}
+.stack-sm{display:flex;flex-direction:column;gap:.75rem}
+
+/* chrome */
+.top{order:0;display:flex;align-items:center;gap:.25rem;padding:.5rem .75rem .5rem 1rem;background:var(--surface);border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:.5rem;text-decoration:none;color:var(--ink);font:800 1.3125rem/1 var(--display);letter-spacing:-.03em;margin-right:auto}
+.brand svg{width:1.75rem;height:1.75rem}
+.hbtn{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;min-height:2.75rem;min-width:2.75rem;padding:0 .625rem;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:700;font-size:.9375rem}
+.hbtn:hover{background:var(--surface2)}
+.hbtn svg{width:1.375rem;height:1.375rem}
+.helpbtn{background:var(--rose);color:var(--rose-ink);padding:0 1rem;margin-left:.25rem}
+.helpbtn:hover{background:var(--rose);filter:brightness(1.08)}
+main{order:2;flex:1;overflow:auto;min-height:0}
+.wrap{max-width:64rem;margin:0 auto;padding:1rem 1rem 3rem;display:flex;flex-direction:column;gap:1rem}
+.tabs{order:3;display:flex;background:var(--surface);border-top:1px solid var(--line)}
+.tabs a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.125rem;padding:.5rem .125rem .5rem;color:var(--muted);text-decoration:none;font-size:.8125rem;font-weight:700;min-height:3.5rem}
+.tabs svg{width:1.5rem;height:1.5rem}
+.tabs a[aria-current="page"]{color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
+@media (min-width:52rem){
+  .tabs{order:1;border-top:0;border-bottom:1px solid var(--line);justify-content:center;gap:.25rem}
+  .tabs a{flex:0 0 auto;flex-direction:row;gap:.5rem;padding:0 1.125rem;min-height:3rem;font-size:.9375rem}
+  .tabs svg{width:1.25rem;height:1.25rem}
+  .tabs a[aria-current="page"]{box-shadow:inset 0 -3px 0 var(--accent)}
+}
+.ico{fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+
+/* building blocks */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius);padding:1rem 1.125rem 1.125rem;display:flex;flex-direction:column;gap:.75rem;min-width:0}
+.eyebrow{font:700 .8125rem/1.2 var(--body);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)}
+.btn{appearance:none;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:700 .9375rem/1.1 var(--body);min-height:2.75rem;padding:.5rem 1.125rem;border-radius:999px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:.5rem;text-decoration:none;text-align:center}
+.btn:hover{border-color:var(--ink)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.danger{background:var(--rose);border-color:var(--rose);color:var(--rose-ink)}
+.btn.sm{min-height:2.375rem;padding:.375rem .875rem;font-size:.875rem}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.linkbtn{appearance:none;background:none;border:0;padding:0;color:var(--accent);font:inherit;font-weight:700;text-decoration:underline;text-underline-offset:.15em;cursor:pointer}
+.pill{display:inline-flex;align-items:center;gap:.375rem;padding:.25rem .7rem;border-radius:999px;font-size:.8125rem;font-weight:700;border:1px solid var(--line);background:var(--surface2);color:var(--ink);line-height:1.3}
+.pill .gl{font-size:.75rem;letter-spacing:-.1em}
+.pill.pat-strong{background:var(--sev5);color:var(--sevt5);border-color:transparent}
+.pill.pat-some{background:var(--sev3);color:var(--sevt3);border-color:transparent}
+.pill.pat-insufficient{border-style:dashed;background:transparent}
+.pill.ex{border-style:dashed;background:transparent;color:var(--muted)}
+.dot{width:.625rem;height:.625rem;border-radius:50%;display:inline-block;flex:none}
+.ph-period .dot,.ph-late .dot{background:var(--rose)}
+.ph-pre .dot{background:var(--sev5)}
+.ph-lut .dot{background:var(--sev3)}
+.ph-ovu .dot{background:var(--gold);border-radius:1px;transform:rotate(45deg) scale(.85)}
+.ph-fol .dot{background:var(--accent)}
+ul.ticks{list-style:none;padding:0;display:flex;flex-direction:column;gap:.375rem}
+ul.ticks li{display:flex;gap:.625rem;align-items:baseline}
+ul.ticks li::before{content:"";flex:none;width:.5rem;height:.5rem;background:var(--accent);border-radius:50%;transform:translateY(-.1rem)}
+
+/* banner, toast, modal */
+#banner:empty{display:none}
+#banner{max-width:64rem;margin:0 auto;padding:.75rem 1rem 0;display:flex;flex-direction:column;gap:.5rem}
+.bn{display:flex;flex-wrap:wrap;gap:.5rem .875rem;align-items:center;justify-content:space-between;padding:.625rem .875rem;border-radius:.75rem;border:1.5px dashed var(--accent);background:var(--accent-soft);font-size:.9375rem}
+.bn.info{border-style:solid;border-color:var(--line);background:var(--surface2)}
+#toast{position:fixed;left:50%;bottom:5rem;transform:translate(-50%,.75rem);opacity:0;transition:opacity .2s,transform .2s;background:var(--ink);color:var(--surface);padding:.625rem 1.125rem;border-radius:999px;font-weight:700;font-size:.9375rem;pointer-events:none;z-index:40;max-width:calc(100% - 2rem);text-align:center}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+.modal{position:fixed;inset:0;background:rgba(4,10,14,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:1rem}
+.modal[hidden]{display:none}
+.sheet{background:var(--surface);color:var(--ink);border-radius:1rem;max-width:32rem;width:100%;padding:1.25rem;display:flex;flex-direction:column;gap:.875rem;max-height:88%;overflow:auto;border:1px solid var(--line)}
+.sheet textarea{min-height:12rem;font-size:.875rem}
+.m-actions{display:flex;gap:.5rem;justify-content:flex-end;flex-wrap:wrap}
+@media (min-width:40rem){.modal{align-items:center}}
+
+/* today */
+.today{display:grid;gap:1rem}
+@media (min-width:52rem){.today{grid-template-columns:minmax(0,24rem) minmax(0,1fr);align-items:start}}
+.dialcard{align-items:center;text-align:center;gap:.5rem}
+.dialcard h1{font-size:1.125rem;font-weight:700;letter-spacing:0;color:var(--muted);font-family:var(--body)}
+.dialwrap{width:100%;max-width:21.5rem}
+.dial{width:100%;height:auto;display:block;overflow:visible}
+.seg{transform-origin:160px 160px}
+.seg.l1{fill:var(--sev1);stroke:var(--line);stroke-width:.6}
+.seg.l2{fill:var(--sev2)}.seg.l3{fill:var(--sev3)}.seg.l4{fill:var(--sev4)}.seg.l5{fill:var(--sev5)}.seg.l6{fill:var(--sev6)}
+.seg.miss{fill:none;stroke:var(--muted);stroke-width:.9;stroke-dasharray:2 2.5;opacity:.7}
+.seg.fut{fill:var(--surface2);stroke:var(--line);stroke-width:.8}
+.seg.now{stroke:var(--ink);stroke-width:2.2}
+@media (prefers-reduced-motion:no-preference){
+  .seg{animation:rise .7s cubic-bezier(.2,.7,.2,1) both;animation-delay:calc(var(--i) * 16ms)}
+  @keyframes rise{from{opacity:.35;transform:scale(.93)}to{opacity:1;transform:none}}
+}
+.dl-k{font:700 11px var(--body);letter-spacing:.14em;fill:var(--muted)}
+.dl-n{font:800 80px var(--display);fill:var(--ink);letter-spacing:-.05em}
+.dl-s{font:400 13px var(--body);fill:var(--muted)}
+.dnum{font:700 10px var(--body);fill:var(--muted)}
+.drop{fill:var(--rose)}
+.spot{fill:none;stroke:var(--rose);stroke-width:1.6}
+.ovu{fill:var(--gold)}
+.hw{fill:none;stroke:var(--sev5);stroke-width:4;stroke-linecap:round}
+.hw.est{stroke-dasharray:1 5}
+.needle{fill:var(--ink)}
+.phase{display:flex;flex-direction:column;align-items:center;gap:.375rem}
+.phase .pill{font-size:.9375rem;padding:.3rem .875rem}
+.legend{list-style:none;padding:.5rem 0 0;margin:0;display:flex;flex-wrap:wrap;gap:.375rem 1rem;justify-content:center;font-size:.8125rem;color:var(--muted);border-top:1px solid var(--line);width:100%}
+.legend li{display:flex;align-items:center;gap:.375rem}
+.legend svg{width:1.25rem;height:.875rem;flex:none}
+.ramp{display:inline-flex;gap:1px}
+.ramp i{display:block;width:.4rem;border-radius:1px}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:.375rem}
+.wk{appearance:none;border:1px solid var(--line);border-radius:.625rem;background:var(--surface);padding:.375rem 0 .5rem;display:flex;flex-direction:column;align-items:center;gap:.25rem;cursor:pointer;font:inherit;color:var(--ink);position:relative;min-height:4rem}
+.wk:hover{border-color:var(--ink)}
+.wk .wd{font-size:.75rem;font-weight:700}
+.wk .wn{font:800 1.375rem/1 var(--display)}
+.wk.miss{border-style:dashed;color:var(--muted);background:transparent}
+.wk.today{box-shadow:inset 0 0 0 2px var(--ink)}
+.dropmk{position:absolute;top:.3rem;right:.3rem;width:.5rem;height:.5rem;border-radius:50% 50% 50% 0;transform:rotate(-45deg);background:var(--rose);box-shadow:0 0 0 1.5px var(--surface)}
+.l1:not(.seg):not(.rt){background:var(--sev1);color:var(--sevt1)}
+.l2:not(.seg){background:var(--sev2);color:var(--sevt2)}
+.l3:not(.seg){background:var(--sev3);color:var(--sevt3)}
+.l4:not(.seg){background:var(--sev4);color:var(--sevt4)}
+.l5:not(.seg){background:var(--sev5);color:var(--sevt5)}
+.l6:not(.seg){background:var(--sev6);color:var(--sevt6)}
+.letter{border-left:4px solid var(--sev5)}
+.letter blockquote{margin:0;font-size:1.0625rem;line-height:1.6;white-space:pre-wrap}
+.support{border:2px solid var(--rose);background:var(--rose-soft)}
+
+/* log */
+.loghead{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:.75rem}
+.lh-mid{text-align:center;min-width:0}
+.lh-mid h1{display:flex;flex-direction:column;gap:.125rem}
+.lh-date{font:400 1rem/1.2 var(--body);color:var(--muted);letter-spacing:0}
+.iconbtn{appearance:none;width:2.75rem;height:2.75rem;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:700 1.375rem/1 var(--body);cursor:pointer;display:grid;place-items:center}
+.iconbtn:hover:not(:disabled){border-color:var(--ink)}
+.iconbtn:disabled{opacity:.35;cursor:not-allowed}
+.jump{justify-content:center}
+.jump input[type=date]{width:auto;min-height:2.375rem;padding:.25rem .5rem}
+.chips{display:flex;flex-wrap:wrap;gap:.5rem}
+.chip{appearance:none;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:700 .9375rem/1 var(--body);min-height:2.75rem;padding:0 1rem;border-radius:999px;cursor:pointer}
+.chip:hover{border-color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:var(--surface)}
+.chip.flow[aria-pressed="true"]{background:var(--rose);border-color:var(--rose);color:var(--rose-ink)}
+.chip[aria-pressed="true"]::before{content:"\2713\00a0"}
+.gh{margin-top:.5rem;font-size:.9375rem;text-transform:uppercase;letter-spacing:.07em;font-family:var(--body);color:var(--muted)}
+.rrow{display:flex;flex-direction:column;gap:.375rem;padding:.625rem 0;border-top:1px solid var(--line)}
+.rlab{display:flex;justify-content:space-between;gap:.75rem;align-items:baseline}
+.rval{font-size:.875rem;color:var(--muted);white-space:nowrap;font-weight:700}
+.scale{display:flex;gap:.375rem}
+.rt{appearance:none;flex:1;min-width:2.125rem;height:2.75rem;border-radius:.625rem;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font:800 1.0625rem/1 var(--display);cursor:pointer;padding:0}
+.rt:hover{border-color:var(--ink)}
+.rt.on{border-color:var(--ink);box-shadow:inset 0 0 0 1.5px var(--ink)}
+.rt.on.l1{background:var(--sev1);color:var(--sevt1)}
+@media (min-width:44rem){.rrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(18rem,22rem);align-items:center;gap:1rem}.rlab{flex-direction:column;gap:.125rem}}
+.key{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.375rem;font-size:.8125rem}
+@media (min-width:36rem){.key{grid-template-columns:repeat(6,minmax(0,1fr))}}
+.key span{display:flex;align-items:center;gap:.375rem;padding:.25rem .5rem;border-radius:.5rem;font-weight:700}
+.key b{font:800 .9375rem/1 var(--display)}
+.savebar{position:sticky;bottom:0;z-index:3;display:flex;gap:.75rem;align-items:center;justify-content:space-between;padding:.75rem 1rem;margin:0 -1rem -3rem;background:var(--surface);border-top:1px solid var(--line)}
+.savebar .btn{flex:none}
+
+/* forms */
+.field{display:flex;flex-direction:column;gap:.375rem;min-width:0}
+.field label,.flabel{font-weight:700;font-size:.9375rem}
+input[type=text],input[type=tel],input[type=date],select,textarea{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:.625rem;padding:.625rem .75rem;min-height:2.75rem;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent)}
+textarea{min-height:7rem;resize:vertical;line-height:1.55}
+.grid2{display:grid;gap:.875rem;grid-template-columns:repeat(auto-fit,minmax(13rem,1fr))}
+.check{display:flex;gap:.75rem;align-items:center;min-height:2.75rem;cursor:pointer}
+.check input{width:1.375rem;height:1.375rem;accent-color:var(--accent);flex:none}
+.meds{display:flex;flex-direction:column}
+.meds .check{border-top:1px solid var(--line)}
+.meds .check:first-child{border-top:0}
+
+/* patterns */
+.statrow{display:grid;grid-template-columns:repeat(auto-fit,minmax(9rem,1fr));gap:.5rem}
+.stat{border-top:2px solid var(--ink);padding-top:.5rem}
+.stat b{display:block;font:800 1.5rem/1.1 var(--display);font-variant-numeric:tabular-nums}
+.stat span{font-size:.8125rem;color:var(--muted)}
+.seg2{display:inline-flex;border:1.5px solid var(--line);border-radius:999px;padding:2px;gap:2px;background:var(--surface2)}
+.seg2 button{appearance:none;border:0;background:transparent;color:var(--ink);font:700 .875rem/1 var(--body);min-height:2.25rem;padding:0 .875rem;border-radius:999px;cursor:pointer}
+.seg2 button[aria-pressed="true"]{background:var(--ink);color:var(--surface)}
+.heatwrap{overflow-x:auto;border:1px solid var(--line);border-radius:.75rem;background:var(--surface)}
+table.heat{border-collapse:separate;border-spacing:3px;font-variant-numeric:tabular-nums;margin:.25rem}
+.heat th{font-weight:700}
+.heat .rh,.heat tbody th{position:sticky;left:0;background:var(--surface);z-index:1;text-align:left;padding:0 .625rem 0 .375rem;font-size:.8125rem;white-space:nowrap}
+.heat tbody th small{display:block;font-weight:400;color:var(--muted);font-size:.75rem}
+.heat th.ch{font-size:.6875rem;color:var(--muted);min-width:1.75rem;text-align:center;padding:0}
+.heat th.ch.hl{color:var(--ink)}
+.heat .br td{padding:0;height:1.25rem}
+.heat .br .brk{font-size:.6875rem;font-weight:700;text-align:center;border-bottom:2px solid var(--ink);color:var(--ink);white-space:nowrap;vertical-align:bottom}
+.hc{width:1.75rem;height:1.75rem;min-width:1.75rem;border-radius:.375rem;text-align:center;font:700 .8125rem/1 var(--body);position:relative;padding:0}
+.hc.miss{color:var(--muted);box-shadow:inset 0 0 0 1px var(--line)}
+.hc.fut{box-shadow:inset 0 0 0 1px var(--line);background:var(--surface2)}
+.hc.out{background:transparent}
+.hc.p::after{content:"";position:absolute;left:3px;right:3px;bottom:2px;height:4px;border-radius:2px;background:var(--rose);box-shadow:0 0 0 1px var(--surface)}
+.hc.sp::after{content:"";position:absolute;left:4px;right:4px;bottom:2px;height:0;border-bottom:2.5px dotted var(--rose)}
+.hc.now{box-shadow:inset 0 0 0 2px var(--ink)}
+.trend{position:relative;min-height:13.75rem}
+.trend svg{display:block}
+.trend .grid{stroke:var(--line);stroke-width:1}
+.trend .ax{font:12px var(--body);fill:var(--muted)}
+.trend .area{fill:var(--sev3);opacity:.45}
+.trend .tline{fill:none;stroke:var(--sev6);stroke-width:2.25;stroke-linejoin:round;stroke-linecap:round}
+.trend .pband{fill:var(--rose);opacity:.18}
+.trend .endpt{fill:var(--sev6);stroke:var(--surface);stroke-width:2.5}
+.trend .endlab{font:800 13px var(--display);fill:var(--ink)}
+.trend .guide{stroke:var(--ink);stroke-dasharray:3 3;opacity:.55}
+.tip{position:absolute;pointer-events:none;background:var(--ink);color:var(--surface);font-size:.8125rem;padding:.375rem .5rem;border-radius:.375rem;white-space:nowrap;transform:translate(-50%,-115%);top:0;left:0;display:none}
+.dbhead{display:none}
+.db{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:.25rem .75rem;padding:.625rem 0;border-top:1px solid var(--line);align-items:center}
+.db .lab{font-weight:700;font-size:.9375rem}
+.db .track{grid-column:1 / -1}
+@media (min-width:44rem){.db{grid-template-columns:minmax(12rem,17rem) 1fr 7rem}.db .track{grid-column:auto}.db .nums{order:3}.dbhead{display:grid;grid-template-columns:minmax(12rem,17rem) 1fr 7rem;gap:.75rem;font-size:.75rem;color:var(--muted);font-weight:700}.dbhead .ends{display:flex;justify-content:space-between}}
+.track{position:relative;height:1.375rem}
+.track::before{content:"";position:absolute;left:0;right:0;top:50%;height:2px;background:var(--line);transform:translateY(-50%)}
+.track .bar{position:absolute;top:50%;height:6px;transform:translateY(-50%);background:var(--sev4);border-radius:3px}
+.track .d{position:absolute;top:50%;width:.9375rem;height:.9375rem;border-radius:50%;transform:translate(-50%,-50%)}
+.track .d.post{background:var(--surface);border:2.5px solid var(--sev5)}
+.track .d.pre{background:var(--sev6);border:2px solid var(--surface);box-shadow:0 0 0 1px var(--sev6)}
+.nums{font-variant-numeric:tabular-nums;font-size:.875rem;color:var(--muted);text-align:right;white-space:nowrap}
+.dbkey{display:flex;flex-wrap:wrap;gap:1rem;font-size:.8125rem;color:var(--muted)}
+.dbkey span{display:flex;align-items:center;gap:.375rem}
+.dbkey i{width:.875rem;height:.875rem;border-radius:50%;display:inline-block}
+.cycles{display:grid;gap:.75rem;grid-template-columns:repeat(auto-fill,minmax(17.5rem,1fr))}
+.cyc{gap:.625rem}
+.cmp{display:grid;grid-template-columns:auto 1fr auto;gap:.25rem .5rem;align-items:center;font-size:.875rem}
+.cmp .bar{height:.625rem;border-radius:.3125rem;background:var(--sev2)}
+.cmp .bar.pre{background:var(--sev5)}
+.cmp b{font-variant-numeric:tabular-nums}
+.tags{display:flex;flex-wrap:wrap;gap:.375rem}
+.tag{font-size:.8125rem;padding:.125rem .5rem;border-radius:.375rem;background:var(--surface2);border:1px solid var(--line)}
+.tag.core{border-color:var(--sev5);font-weight:700}
+
+/* journal, care */
+.entry{border-top:1px solid var(--line);padding-top:.75rem;display:flex;flex-direction:column;gap:.375rem}
+.entry:first-of-type{border-top:0;padding-top:0}
+.entry .txt{white-space:pre-wrap;line-height:1.6}
+.entry .pr{font-style:italic;color:var(--muted);font-size:.9375rem}
+.prompt{font:700 1.375rem/1.25 var(--display);letter-spacing:-.01em}
+.tx{display:flex;flex-direction:column;gap:.5rem;border-top:1px solid var(--line);padding-top:.875rem}
+.tx:first-of-type{border-top:0;padding-top:0}
+.tx h3{font-size:1.125rem}
+
+/* help */
+.helpgrid{display:grid;gap:.75rem;grid-template-columns:repeat(auto-fit,minmax(16rem,1fr))}
+.hcard{gap:.5rem}
+.hcard .big{font:800 2rem/1 var(--display);letter-spacing:-.02em}
+.hcard.urgent{border:2px solid var(--rose)}
+.breathe{width:8.5rem;height:8.5rem;border-radius:50%;margin:.25rem auto;border:2.5px solid var(--accent);background:var(--accent-soft)}
+@media (prefers-reduced-motion:no-preference){.breathe{animation:breathe 10s ease-in-out infinite}@keyframes breathe{0%,100%{transform:scale(.7)}40%{transform:scale(1)}}}
+.learn h2{font-size:1.3125rem}
+.learn p,.learn li{max-width:65ch}
+.learn ul{display:flex;flex-direction:column;gap:.375rem}
+.foot{font-size:.875rem;color:var(--muted);max-width:65ch}
+.auth{max-width:30rem;margin:1rem auto;gap:1rem}
+.auth h1{font-size:2rem}
+.auth .or{display:flex;align-items:center;gap:.75rem;color:var(--muted);font-size:.875rem}
+.auth .or::before,.auth .or::after{content:"";flex:1;height:1px;background:var(--line)}
+.auth input[type=email],.auth input[type=password]{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:.625rem;padding:.625rem .75rem;min-height:2.75rem;width:100%}
+.authmsg{padding:.625rem .875rem;border-radius:.625rem;background:var(--rose-soft);font-size:.9375rem}
+.authmsg.ok{background:var(--accent-soft)}
+.gbtn{background:var(--surface);border-color:var(--ink)}
+.loading{max-width:30rem;margin:2rem auto;text-align:center;align-items:center}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="brand" href="#today" aria-label="Tidemark, go to Today">
+    <svg viewBox="0 0 32 32" aria-hidden="true"><circle cx="16" cy="16" r="13" fill="none" stroke="currentColor" stroke-width="2.6"/><path d="M5.5 18.5c2.6-2.8 4.9-2.8 7.5 0s4.9 2.8 7.5 0 4.2-2.6 6-1" fill="none" stroke="var(--sev5)" stroke-width="2.8" stroke-linecap="round"/></svg>
+    <span>Tidemark</span>
+  </a>
+  <a class="hbtn" href="#learn" data-nav="learn">Learn</a>
+  <a class="hbtn" href="#prefs" data-nav="prefs" aria-label="Preferences"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/></svg></a>
+  <a class="hbtn helpbtn" href="#help" data-nav="help">Help now</a>
+</header>
+<nav class="tabs" aria-label="Sections">
+  <a href="#today" data-nav="today"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8"/><path d="M12 4v4M7 13.5c1.6-1.6 3.4-1.6 5 0s3.4 1.6 5 0"/></svg>Today</a>
+  <a href="#log" data-nav="log"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14M6.5 15.5 15.8 6.2a1.8 1.8 0 0 1 2.5 2.5L9 18H6.5z"/></svg>Log</a>
+  <a href="#patterns" data-nav="patterns"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="4" width="4.5" height="4.5" rx="1"/><rect x="10" y="4" width="4.5" height="4.5" rx="1"/><rect x="16" y="4" width="4" height="4.5" rx="1"/><rect x="4" y="10.5" width="4.5" height="4.5" rx="1"/><rect x="10" y="10.5" width="4.5" height="4.5" rx="1"/><path d="M4 20h16"/></svg>Patterns</a>
+  <a href="#journal" data-nav="journal"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 4.5h10.5A1.5 1.5 0 0 1 18 6v14H7.5A1.5 1.5 0 0 1 6 18.5z"/><path d="M6 18.5A1.5 1.5 0 0 1 7.5 17H18M9.5 8.5h5"/></svg>Journal</a>
+  <a href="#care" data-nav="care"><svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M10.6 4.6a4.6 4.6 0 0 1 6.5 6.5l-6 6a4.6 4.6 0 0 1-6.5-6.5z"/><path d="m7.6 7.6 6.5 6.5"/></svg>Care</a>
+</nav>
+<main id="main">
+  <div id="banner" aria-live="polite"></div>
+  <div class="wrap" id="view"></div>
+</main>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="modal" class="modal" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="m-title">
+    <h2 id="m-title"></h2>
+    <div id="m-body" class="stack-sm"></div>
+    <div class="m-actions"><button type="button" class="btn" id="m-cancel">Cancel</button><button type="button" class="btn primary" id="m-ok">OK</button></div>
+  </div>
+</div>
+
+<script id="core">
+/* ===== Pure data model: no DOM below this line until the app script ===== */
+const SYMPTOMS=[
+ {k:'dep',g:'mood',label:'Depressed, sad or down'},
+ {k:'hopeless',g:'mood',label:'Hopeless'},
+ {k:'worthless',g:'mood',label:'Worthless or guilty'},
+ {k:'anxious',g:'mood',label:'Anxious, tense or on edge'},
+ {k:'swings',g:'mood',label:'Mood swings or sudden tears'},
+ {k:'reject',g:'mood',label:'Easily hurt or sensitive to rejection'},
+ {k:'angry',g:'mood',label:'Angry or irritable'},
+ {k:'conflict',g:'mood',label:'Conflict with people'},
+ {k:'interest',g:'mind',label:'Less interest in usual activities'},
+ {k:'focus',g:'mind',label:'Trouble concentrating'},
+ {k:'tired',g:'mind',label:'Tired or low energy'},
+ {k:'overwhelm',g:'mind',label:'Overwhelmed or unable to cope'},
+ {k:'control',g:'mind',label:'Felt out of control'},
+ {k:'appetite',g:'fuel',label:'Ate more than usual'},
+ {k:'cravings',g:'fuel',label:'Food cravings'},
+ {k:'sleepmore',g:'fuel',label:'Slept more or hard to get up'},
+ {k:'insomnia',g:'fuel',label:'Trouble falling or staying asleep'},
+ {k:'breast',g:'body',label:'Breast tenderness'},
+ {k:'bloat',g:'body',label:'Bloating, swelling or weight gain'},
+ {k:'headache',g:'body',label:'Headache'},
+ {k:'pain',g:'body',label:'Joint or muscle pain'}
+];
+const GROUPS=[{id:'mood',title:'Mood'},{id:'mind',title:'Mind and energy'},{id:'fuel',title:'Appetite and sleep'},{id:'body',title:'Body'}];
+const IMPACT=[{k:'work',label:'Got less done at work, school or home'},{k:'social',label:'Skipped or cut back on hobbies or plans'},{k:'rel',label:'Got in the way of my relationships'}];
+const DSM=[
+ {id:1,core:true,name:'Mood swings and sensitivity',items:['swings','reject']},
+ {id:2,core:true,name:'Irritability and conflict',items:['angry','conflict']},
+ {id:3,core:true,name:'Depressed mood',items:['dep','hopeless','worthless']},
+ {id:4,core:true,name:'Anxiety and tension',items:['anxious']},
+ {id:5,name:'Less interest',items:['interest']},
+ {id:6,name:'Concentration',items:['focus']},
+ {id:7,name:'Low energy',items:['tired']},
+ {id:8,name:'Appetite and cravings',items:['appetite','cravings']},
+ {id:9,name:'Sleep changes',items:['sleepmore','insomnia']},
+ {id:10,name:'Overwhelmed',items:['overwhelm','control']},
+ {id:11,name:'Physical symptoms',items:['breast','bloat','headache','pain']}
+];
+const SCALE=['Not at all','Minimal','Mild','Moderate','Severe','Extreme'];
+const FLOW=['None','Spotting','Light','Medium','Heavy'];
+const MOODS=['Rough','Low','Okay','Good','Great'];
+const SAFETY=['None','Passing thoughts','Strong or frequent thoughts'];
+const KINDS=['Medication','Supplement','Therapy','Lifestyle'];
+const SCHED={daily:'Every day',luteal:'Luteal phase only',asneeded:'As needed'};
+
+const pad=n=>String(n).padStart(2,'0');
+const iso=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const parseD=s=>{const [y,m,d]=s.split('-').map(Number);return new Date(y,m-1,d);};
+const addDays=(s,n)=>{const d=parseD(s);d.setDate(d.getDate()+n);return iso(d);};
+const diffDays=(a,b)=>Math.round((parseD(a)-parseD(b))/86400000);
+const todayISO=()=>iso(new Date());
+const mean=a=>a.reduce((x,y)=>x+y,0)/a.length;
+const clamp=(v,lo,hi)=>Math.min(hi,Math.max(lo,v));
+const fmt=(s,o)=>parseD(s).toLocaleDateString(undefined,o||{month:'short',day:'numeric'});
+const fmtY=s=>fmt(s,{month:'short',day:'numeric',year:'numeric'});
+const plural=(n,w)=>n+' '+w+(n===1?'':'s');
+
+function mergeDeep(t,s){
+  for(const k of Object.keys(s)){
+    const v=s[k];
+    if(v&&typeof v==='object'&&!Array.isArray(v)&&t[k]&&typeof t[k]==='object'&&!Array.isArray(t[k])) mergeDeep(t[k],v);
+    else t[k]=v;
+  }
+  return t;
+}
+function dayScore(e){ if(!e||!e.s) return null; let t=0; for(const it of SYMPTOMS) t+=(e.s[it.k]||1); return t/SYMPTOMS.length; }
+function drspTotal(e){ if(!e||!e.s) return null; let t=0; for(const it of SYMPTOMS) t+=(e.s[it.k]||1); return t; }
+function level(sc){ return sc==null?null:clamp(Math.round(sc),1,6); }
+
+function allDays(docs){
+  const out={};
+  for(const [id,doc] of Object.entries(docs||{})){
+    if(!id.startsWith('days-')||!doc||!doc.d) continue;
+    for(const [k,v] of Object.entries(doc.d)) if(v) out[k]=v;
+  }
+  return out;
+}
+function getJournal(docs){
+  const out=[];
+  for(const [id,doc] of Object.entries(docs||{})){
+    if(!id.startsWith('journal-')||!doc||!doc.e) continue;
+    for(const v of Object.values(doc.e)) if(v&&v.id) out.push(v);
+  }
+  return out.sort((a,b)=>a.date<b.date?1:a.date>b.date?-1:(b.created||0)-(a.created||0));
+}
+function getPrefs(docs){
+  return Object.assign({cycleLength:28,periodLength:5,safety:true,name:'',supportName:'',supportPhone:'',lastStart:null},(docs&&docs.prefs)||{});
+}
+function getTx(docs){ return ((docs&&docs.treatments&&docs.treatments.items)||[]).filter(Boolean); }
+function hasReal(docs){
+  for(const [id,doc] of Object.entries(docs||{})){
+    if(!doc) continue;
+    if(id.startsWith('days-')&&doc.d&&Object.values(doc.d).some(Boolean)) return true;
+    if(id.startsWith('journal-')&&doc.e&&Object.values(doc.e).some(Boolean)) return true;
+    if(id==='treatments'&&doc.items&&doc.items.length) return true;
+    if(id==='prefs') return true;
+    if(id==='letter'&&doc.text) return true;
+  }
+  return false;
+}
+
+/* A new cycle starts on the first day of light-or-heavier bleeding after 3+ days without it.
+   Spotting never starts a cycle. Starts closer than 10 days are treated as the same period. */
+function findStarts(days,lastStartPref){
+  const keys=Object.keys(days).sort(); const starts=[];
+  for(const d of keys){
+    if((days[d].flow||0)<2) continue;
+    let prev=false;
+    for(let j=1;j<=3;j++){ const e=days[addDays(d,-j)]; if(e&&(e.flow||0)>=2){prev=true;break;} }
+    if(prev) continue;
+    if(starts.length&&diffDays(d,starts[starts.length-1])<10) continue;
+    starts.push(d);
+  }
+  if(lastStartPref&&!starts.some(s=>Math.abs(diffDays(s,lastStartPref))<=6)){ starts.push(lastStartPref); starts.sort(); }
+  return starts;
+}
+function phaseFor(cd,len,P,until){
+  if(until<0) return {key:'late',label:'Period due'};
+  if(cd<=P) return {key:'period',label:'Period days'};
+  if(until<=7) return {key:'pre',label:'Premenstrual week'};
+  const ov=Math.max(P+2,len-14);
+  if(Math.abs(cd-ov)<=1) return {key:'ovu',label:'Ovulation window (est.)'};
+  if(cd<ov) return {key:'fol',label:'Follicular phase'};
+  return {key:'lut',label:'Luteal phase'};
+}
+function cycleInfo(A,date,prefs){
+  let s=null,idx=-1;
+  for(let i=A.starts.length-1;i>=0;i--){ if(A.starts[i]<=date){s=A.starts[i];idx=i;break;} }
+  if(!s) return null;
+  const next=A.starts[idx+1]||null;
+  const anchor=next||addDays(s,A.avgLen);
+  const cd=diffDays(date,s)+1, until=diffDays(anchor,date);
+  const len=next?diffDays(next,s):A.avgLen;
+  return {start:s,next,anchor,cd,until,len,predicted:!next,phase:phaseFor(cd,len,(prefs&&+prefs.periodLength)||5,until)};
+}
+function groupVal(e,g){ let m=1; for(const k of g.items) m=Math.max(m,e.s[k]||1); return m; }
+/* Pre week = 7 days before the next period. After-period week = cycle days 4-10.
+   A symptom area counts as "rose and cleared" when its average climbs at least 1.5 points (30% of the 1-6 range),
+   it reaches 4+ on at least 2 premenstrual days, and the after-period week averages under 3. */
+function cycleStats(days,start,next){
+  const preDates=[],postDates=[];
+  for(let k=-7;k<=-1;k++){ const d=addDays(next,k); if(d>=start&&days[d]&&days[d].s) preDates.push(d); }
+  for(let i=3;i<=9;i++){ const d=addDays(start,i); if(d>=next) break; if(days[d]&&days[d].s) postDates.push(d); }
+  const pre=preDates.map(d=>days[d]), post=postDates.map(d=>days[d]);
+  const preM=pre.length>=3?mean(pre.map(dayScore)):null;
+  const postM=post.length>=3?mean(post.map(dayScore)):null;
+  const groups=DSM.map(g=>{
+    if(pre.length<3||post.length<3) return {id:g.id,elevated:false,pre:null,post:null};
+    const pv=pre.map(e=>groupVal(e,g)), qv=post.map(e=>groupVal(e,g));
+    const pm=mean(pv), qm=mean(qv);
+    return {id:g.id,pre:pm,post:qm,elevated:(pm-qm)>=1.5&&pv.filter(v=>v>=4).length>=2&&qm<3};
+  });
+  const elev=groups.filter(g=>g.elevated);
+  const core=elev.some(g=>DSM.find(x=>x.id===g.id).core);
+  const impactDays=pre.filter(e=>IMPACT.some(it=>((e.imp&&e.imp[it.k])||1)>=4)).length;
+  const rise=(preM!=null&&postM!=null)?preM-postM:null;
+  let pattern='insufficient';
+  if(preM!=null&&postM!=null){
+    if(elev.length>=5&&core) pattern='strong';
+    else if(elev.length>=1||rise>=0.75) pattern='some';
+    else pattern='little';
+  }
+  return {preDates,postDates,pre:preM,post:postM,rise,groups,elevated:elev.length,core,impactDays,pattern};
+}
+function countMed(days,id,from,to){ let n=0; for(let d=from;d<=to;d=addDays(d,1)){ const e=days[d]; if(e&&e.meds&&e.meds.includes(id)) n++; } return n; }
+function analyze(days,prefs,today){
+  const starts=findStarts(days,prefs.lastStart);
+  const cycles=starts.map((s,i)=>({start:s,next:starts[i+1]||null,len:starts[i+1]?diffDays(starts[i+1],s):null}));
+  const valid=cycles.filter(c=>c.len&&c.len>=18&&c.len<=50);
+  const rec=valid.slice(-6);
+  const avgLen=rec.length?Math.round(rec.reduce((a,c)=>a+c.len,0)/rec.length):clamp(+prefs.cycleLength||28,18,50);
+  for(const c of cycles){
+    const endD=c.next?addDays(c.next,-1):today;
+    let logged=0; for(let d=c.start;d<=endD;d=addDays(d,1)) if(days[d]&&days[d].s) logged++;
+    c.end=endD; c.span=Math.max(0,diffDays(endD,c.start)+1); c.logged=logged;
+    c.ok=!!(c.len&&c.len>=18&&c.len<=50);
+    c.stats=c.next?cycleStats(days,c.start,c.next):null;
+  }
+  const A={starts,cycles,avgLen,cur:null,stale:false};
+  const last=starts[starts.length-1];
+  if(last&&last<=today){
+    const ci=cycleInfo(A,today,prefs);
+    if(ci.cd>avgLen+30) A.stale=true; else A.cur=ci;
+  }
+  const complete=cycles.filter(c=>c.stats&&c.ok);
+  A.complete=complete;
+  const byOff={};
+  for(let k=-14;k<=-1;k++){ const v=[]; for(const c of complete){ const sc=dayScore(days[addDays(c.next,k)]); if(sc!=null) v.push(sc); } byOff[k]=v.length?mean(v):null; }
+  A.byOff=byOff;
+  const posts=complete.map(c=>c.stats.post).filter(v=>v!=null);
+  A.postMean=posts.length?mean(posts):null;
+  A.hardStart=null;
+  if(A.postMean!=null&&complete.length>=1){
+    const thr=Math.max(A.postMean+1,2.2);
+    for(let k=-1;k>=-14;k--){ const a=byOff[k]; if(a==null) continue; if(a>=thr) A.hardStart=k; else break; }
+    if(A.hardStart===-1) A.hardStart=-2;
+  }
+  return A;
+}
+function hardWindow(A){
+  if(!A.cur) return null;
+  const k=A.hardStart!=null?A.hardStart:-7;
+  return {from:addDays(A.cur.anchor,k),to:addDays(A.cur.anchor,-1),personal:A.hardStart!=null,k};
+}
+function itemShift(days,complete){
+  const out=SYMPTOMS.map(it=>{
+    const pre=[],post=[];
+    for(const c of complete){ if(c.stats.pre==null||c.stats.post==null) continue; for(const d of c.stats.preDates) pre.push(days[d].s[it.k]||1); for(const d of c.stats.postDates) post.push(days[d].s[it.k]||1); }
+    return {k:it.k,label:it.label,pre:pre.length?mean(pre):null,post:post.length?mean(post):null};
+  }).filter(x=>x.pre!=null&&x.post!=null);
+  out.sort((a,b)=>(b.pre-b.post)-(a.pre-a.post)||b.pre-a.pre);
+  return out;
+}
+function medsInCycle(days,tx,c){
+  return tx.map(t=>({t,n:countMed(days,t.id,c.start,c.end)})).filter(x=>x.n>0);
+}
+function doctorSummary(M){
+  const {A,days,tx,prefs,today}=M; const L=[];
+  const dates=Object.keys(days).filter(d=>days[d].s).sort();
+  L.push('PMDD daily symptom log (Tidemark)');
+  if(prefs.name) L.push('Name: '+prefs.name);
+  if(!dates.length) return L.concat(['No daily ratings logged yet.']).join('\n');
+  L.push('Days rated: '+dates.length+', '+fmtY(dates[0])+' to '+fmtY(dates[dates.length-1]));
+  L.push('Method: 21 DRSP-style symptom items and 3 impact items rated daily from 1 (not at all) to 6 (extreme).');
+  L.push('Average cycle length: '+A.avgLen+' days ('+plural(A.complete.length,'complete cycle')+' tracked)');
+  L.push('');
+  for(const c of A.complete.slice(-4).reverse()){
+    const st=c.stats;
+    L.push('Cycle starting '+fmtY(c.start)+' ('+c.len+' days, '+c.logged+' days rated)');
+    if(st.pre==null||st.post==null){ L.push('  Not enough ratings in the week before or after the period to compare.'); }
+    else{
+      L.push('  After-period week (cycle days 4-10) average: '+st.post.toFixed(1));
+      L.push('  Premenstrual week (7 days before next period) average: '+st.pre.toFixed(1)+' ('+(st.rise>=0?'+':'')+st.rise.toFixed(1)+')');
+      const names=st.groups.filter(g=>g.elevated).map(g=>DSM.find(x=>x.id===g.id).name);
+      L.push('  Symptom areas that rose before the period and cleared after: '+names.length+' of 11'+(names.length?' ('+names.join(', ')+')':''));
+      L.push('  Includes a core mood symptom: '+(st.core?'yes':'no'));
+      L.push('  Premenstrual days with impact rated 4 or higher: '+st.impactDays);
+    }
+    const md=medsInCycle(days,tx,c);
+    if(md.length) L.push('  Treatments logged: '+md.map(x=>x.t.name+(x.t.dose?' '+x.t.dose:'')+' ('+plural(x.n,'day')+')').join('; '));
+    L.push('');
+  }
+  const sh=itemShift(days,A.complete).slice(0,5);
+  if(sh.length){
+    L.push('Largest premenstrual increases, averaged across cycles:');
+    for(const x of sh) L.push('  '+x.label+': '+x.post.toFixed(1)+' after period, '+x.pre.toFixed(1)+' before');
+    L.push('');
+  }
+  const sf=dates.filter(d=>(days[d].safety||0)>=1);
+  if(sf.length){ L.push('Thoughts of suicide or self-harm logged on '+plural(sf.length,'day')+' (most recent '+fmtY(sf[sf.length-1])+').'); L.push(''); }
+  if(tx.length){ L.push('Current treatment list:'); for(const t of tx) L.push('  '+t.name+(t.dose?' '+t.dose:'')+' ('+(SCHED[t.schedule]||'not set')+')'); L.push(''); }
+  L.push('Generated '+fmtY(today)+'. Self-tracked log for discussion with a clinician, not a diagnosis.');
+  return L.join('\n');
+}
+function buildCsv(M){
+  const {A,days,tx,prefs}=M;
+  const q=v=>{ const s=v==null?'':String(v); return /[",\n]/.test(s)?'"'+s.replace(/"/g,'""')+'"':s; };
+  const head=['date','cycle_start','cycle_day','days_to_next_period','bleeding','overall_mood'].concat(SYMPTOMS.map(s=>s.k),IMPACT.map(i=>'impact_'+i.k));
+  if(prefs.safety) head.push('self_harm_thoughts');
+  head.push('day_average','drsp_total','treatments');
+  const rows=[head.join(',')];
+  for(const d of Object.keys(days).filter(d=>days[d].s).sort()){
+    const e=days[d]; const ci=cycleInfo(A,d,prefs);
+    const r=[d,ci?ci.start:'',ci?ci.cd:'',ci&&!ci.predicted?ci.until:'',FLOW[e.flow||0],e.mood?MOODS[e.mood-1]:''];
+    for(const s of SYMPTOMS) r.push(e.s[s.k]||1);
+    for(const i of IMPACT) r.push((e.imp&&e.imp[i.k])||1);
+    if(prefs.safety) r.push(SAFETY[e.safety||0]);
+    r.push(dayScore(e).toFixed(2),drspTotal(e),(e.meds||[]).map(id=>{const t=tx.find(x=>x.id===id);return t?t.name+(t.dose?' '+t.dose:''):'';}).filter(Boolean).join('; '));
+    rows.push(r.map(q).join(','));
+  }
+  return rows.join('\n')+'\n';
+}
+
+/* Example data: three tracked cycles plus the current one, so a first visit shows a working app. */
+function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};}
+function makeDemo(today){
+  const rnd=mulberry32(20261105);
+  const lens=[29,27,30];
+  const starts=[addDays(today,-24)];
+  for(let i=lens.length-1;i>=0;i--) starts.unshift(addDays(starts[0],-lens[i]));
+  const W={dep:.9,hopeless:.7,worthless:.5,anxious:.9,swings:1,reject:.85,angry:1,conflict:.75,interest:.55,focus:.6,tired:.75,overwhelm:.9,control:.6,appetite:.4,cravings:.55,sleepmore:.42,insomnia:.35,breast:.55,bloat:.7,headache:.35,pain:.3};
+  const days={};
+  for(let c=0;c<starts.length;c++){
+    const st=starts[c], L=c<lens.length?lens[c]:28, nx=c<lens.length?starts[c+1]:addDays(st,28), treated=c>=2;
+    for(let i=0;i<L;i++){
+      const d=addDays(st,i); if(d>today) break;
+      if(i>4&&d!==today&&rnd()<0.07) continue;
+      const toN=diffDays(nx,d);
+      let x=.07;
+      if(i===0) x=.55; else if(i===1) x=.35; else if(i===2) x=.15;
+      else if(toN<=11) x=Math.pow((12-toN)/11,1.35);
+      else if(Math.abs(i-(L-14))<=1) x=.14;
+      const k=treated?.62:1;
+      const s={}; for(const it of SYMPTOMS) s[it.k]=clamp(1+Math.round(x*k*W[it.k]*5.3+(rnd()-.35)*1.1),1,6);
+      const imp={work:clamp(1+Math.round(x*k*4.6+(rnd()-.5)),1,6),social:clamp(1+Math.round(x*k*4.2+(rnd()-.5)),1,6),rel:clamp(1+Math.round(x*k*4.4+(rnd()-.5)),1,6)};
+      const meds=[]; if(rnd()<.88) meds.push('t2'); if(treated&&toN<=14&&rnd()<.95) meds.push('t1'); if(rnd()<.3) meds.push('t3');
+      days[d]={flow:[3,4,3,2,1][i]||0,mood:clamp(5-Math.round(x*k*3.6+(rnd()-.3)*.8),1,5),s,imp,safety:0,meds,note:'',updated:0};
+    }
+  }
+  const note=(d,t)=>{ if(days[d]) days[d].note=t; };
+  note(addDays(starts[1],-2),'Snapped at Sam over the dishes and cried in the car after. Knew it was the luteal phase, but it did not feel like it.');
+  note(addDays(starts[2],-3),'Called in sick. Everything felt pointless by lunch.');
+  note(addDays(starts[3],-2),'Rough, but I could tell it was the cycle this time. Went to bed at 9.');
+  note(addDays(starts[3],8),'Felt like myself all day. Long walk after work.');
+  const docs={prefs:{cycleLength:28,periodLength:5,safety:true,name:'',supportName:'',supportPhone:'',lastStart:null}};
+  for(const [d,e] of Object.entries(days)){ const id='days-'+d.slice(0,7); (docs[id]=docs[id]||{d:{}}).d[d]=e; }
+  docs.treatments={items:[
+    {id:'t1',name:'Sertraline',dose:'50 mg',kind:'Medication',schedule:'luteal'},
+    {id:'t2',name:'Calcium',dose:'600 mg',kind:'Supplement',schedule:'daily'},
+    {id:'t3',name:'Evening walk',dose:'20 min',kind:'Lifestyle',schedule:'asneeded'}
+  ]};
+  const j=(d,p,t,n)=>{ const id='jd'+n; const mid='journal-'+d.slice(0,7); (docs[mid]=docs[mid]||{e:{}}).e[id]={id,date:d,prompt:p,text:t,created:n}; };
+  j(addDays(starts[3],7),'One small thing that helped, even a little.','Walking before work. The air was cold and I actually noticed the trees.',3);
+  j(addDays(starts[3],-3),'What would you say to a friend having the day you had?','That snapping at people does not make her a bad person. She is carrying a lot and still showing up.',2);
+  j(addDays(starts[2],6),'Three things you would like to keep from today.','Coffee with Mom. Finishing the report early. Laughing at the dog.',1);
+  docs.letter={text:'Hey. If you are reading this, it is probably one of the heavy days.\n\nThe thoughts saying everything is ruined are loud right now, and they have been wrong every single time before. You have made it through every one of these stretches.\n\nEat something. Drink water. Text your sister. Go to bed early. You will feel like yourself again in a few days.\n\nLove, me (on a good Tuesday)',updated:0};
+  return docs;
+}
+</script>
+
+<script src="firebase-config.js"></script>
+<script>
+/* ===== App ===== */
+const PROMPTS=[
+ 'What did your body handle for you today?',
+ 'What would you say to a friend having the day you had?',
+ 'One small thing that helped, even a little.',
+ 'What do you need more of this week?',
+ 'Something you are proud of, however small.',
+ 'What can you let go of today?',
+ 'Who made today easier, and how?',
+ 'What does your good-week self know that is worth remembering now?',
+ 'Describe a place where you feel calm.',
+ 'What boundary would protect you on your harder days?',
+ 'Three things you would like to keep from today.',
+ 'What feeling showed up most today, and what was it asking for?'
+];
+const ROUTES=['today','log','patterns','journal','care','learn','help','prefs'];
+const LKEY='tidemark.v1', DKEY='tidemark.demoOff';
+const $=s=>document.querySelector(s);
+const esc=s=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const clone=o=>o==null?o:JSON.parse(JSON.stringify(o));
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+
+const S={
+  route:'today', mode:'connecting', demo:true, demoOff:false, docs:{}, demoDocs:null, serverHas:new Set(),
+  col:null, ver:0, logDate:todayISO(), draft:null, align:'end',
+  jdraft:{text:'',editing:null}, promptIdx:null, letterEdit:false, letterDraft:'', txEdit:null,
+  banner:null, dl:true, user:null, uid:null, preview:false, authMsg:'', authOk:false, pendingRender:false, localHas:false, gotDefinitive:false, helpNote:false
+};
+try{ S.demoOff=localStorage.getItem(DKEY)==='1'; }catch(e){}
+
+function D(){ if(!S.demo) return S.docs; if(!S.demoDocs) S.demoDocs=makeDemo(todayISO()); return S.demoDocs; }
+function recompute(){ S.demo=S.mode==='signedout'?!!S.preview:(!hasReal(S.docs)&&!S.demoOff); S.ver++; }
+let _m=null,_mv=-1,_md='';
+function model(){
+  const t=todayISO();
+  if(_m&&_mv===S.ver&&_md===t) return _m;
+  const docs=D(), days=allDays(docs), prefs=getPrefs(docs), tx=getTx(docs);
+  _m={docs,days,prefs,tx,today:t,A:analyze(days,prefs,t),journal:getJournal(docs),letter:docs.letter||null};
+  _mv=S.ver; _md=t; return _m;
+}
+
+/* ---------- storage: Firebase when configured, this browser otherwise ---------- */
+const FB_VER='10.12.2';
+const CFG=window.TIDEMARK_FIREBASE||{};
+const HAS_FB=!!(CFG.apiKey&&CFG.projectId&&CFG.appId);
+const FB={};
+function loadLocal(){ try{ const r=localStorage.getItem(LKEY); return r?(JSON.parse(r).docs||{}):{}; }catch(e){ return {}; } }
+function saveLocal(){ try{ localStorage.setItem(LKEY,JSON.stringify({docs:S.docs})); }catch(e){ toast('This browser would not save your entry. Check that it allows site storage.'); } }
+function clearLocal(){ try{ localStorage.removeItem(LKEY); }catch(e){} }
+function setDemoOff(v){ S.demoOff=v; try{ v?localStorage.setItem(DKEY,'1'):localStorage.removeItem(DKEY); }catch(e){} }
+function docRef(id){ return FB.f.doc(FB.db,'users',S.uid,'docs',id); }
+
+/* Returns false when nothing could be written; otherwise a promise. The screen updates right away;
+   Firestore keeps the write on this device and syncs it when the connection allows. */
+function writeDoc(id,body,merge){
+  if(S.mode==='connecting'||S.mode==='boot'){ toast('Still opening your log. Try again in a moment.'); return false; }
+  if(S.mode==='signedout'){ toast('Sign in to save your entries.'); S.preview=false; recompute(); go('today'); return false; }
+  const base=S.docs[id];
+  S.docs[id]=(merge&&base)?mergeDeep(clone(base),clone(body)):clone(body);
+  if(S.demo) S.draft=null;
+  recompute();
+  if(S.mode!=='db'){ saveLocal(); return Promise.resolve(true); }
+  const w=merge?FB.f.setDoc(docRef(id),body,{merge:true}):FB.f.setDoc(docRef(id),body);
+  return w.then(()=>true).catch(e=>{ writeFailed(e); return false; });
+}
+function deleteDoc(id){
+  delete S.docs[id]; recompute();
+  if(S.mode!=='db'){ saveLocal(); return Promise.resolve(true); }
+  return FB.f.deleteDoc(docRef(id)).then(()=>true).catch(e=>{ writeFailed(e); return false; });
+}
+function writeFailed(e){
+  const c=e&&e.code;
+  if(c==='permission-denied') toast('That didn’t save: this account can’t write here. Check the Firestore rules.');
+  else if(c==='unauthenticated') toast('You’ve been signed out. Sign in again to keep saving.');
+  else if(c==='resource-exhausted') toast('The free database limit for today was reached. Try again tomorrow.');
+  else toast('That didn’t save. Check your connection and try again.');
+}
+function goLocal(banner){ S.mode='local'; S.banner=banner; S.docs=loadLocal(); recompute(); safeRender(); }
+async function initStorage(){
+  if(!HAS_FB){ goLocal('local'); return; }
+  try{
+    const base='https://www.gstatic.com/firebasejs/'+FB_VER+'/';
+    const [a,au,fs]=await Promise.all([import(base+'firebase-app.js'),import(base+'firebase-auth.js'),import(base+'firebase-firestore.js')]);
+    FB.a=au; FB.f=fs;
+    FB.app=a.initializeApp(CFG);
+    FB.auth=au.getAuth(FB.app);
+    try{ FB.db=fs.initializeFirestore(FB.app,{localCache:fs.persistentLocalCache({tabManager:fs.persistentMultipleTabManager()})}); }
+    catch(e){ FB.db=fs.getFirestore(FB.app); }
+    au.getRedirectResult(FB.auth).catch(authError);
+    au.onAuthStateChanged(FB.auth,onUser);
+  }catch(e){ goLocal('fbfail'); }
+}
+function onUser(user){
+  if(S.unsub){ try{ S.unsub(); }catch(e){} S.unsub=null; }
+  clearTimeout(S.loadTimer); S.gotDefinitive=false;
+  if(!user){ S.user=null; S.uid=null; S.mode='signedout'; S.banner=null; S.docs={}; recompute(); safeRender(); return; }
+  S.user={email:user.email||'',name:user.displayName||''}; S.uid=user.uid;
+  S.mode='connecting'; S.banner=null; S.preview=false; S.authMsg='';
+  S.localHas=Object.keys(loadLocal()).length>0;
+  recompute(); safeRender(); subscribe();
+}
+function subscribe(){
+  clearTimeout(S.loadTimer);
+  S.loadTimer=setTimeout(()=>{ if(!S.gotDefinitive){ S.banner='slow'; if(S.mode==='connecting') S.mode='db'; recompute(); safeRender(); } },10000);
+  S.unsub=FB.f.onSnapshot(FB.f.collection(FB.db,'users',S.uid,'docs'),snap=>{
+    const md=snap.metadata||{};
+    if(md.fromCache&&snap.empty&&!S.gotDefinitive) return;
+    if(!md.fromCache){ S.gotDefinitive=true; clearTimeout(S.loadTimer); if(S.banner==='slow'||S.banner==='offline') S.banner=null; }
+    const docs={}; snap.docs.forEach(d=>{ docs[d.id]=clone(d.data()); });
+    S.docs=docs; S.mode='db';
+    recompute(); safeRender();
+  },err=>{
+    clearTimeout(S.loadTimer);
+    if(S.mode==='connecting') S.mode='db';
+    S.banner='offline'; recompute(); safeRender();
+    if(err&&err.code==='permission-denied') toast('Your log couldn’t be opened. Check the Firestore rules.');
+  });
+}
+const AUTH_MSG={
+  'auth/invalid-credential':'That email and password don’t match an account.',
+  'auth/wrong-password':'That email and password don’t match an account.',
+  'auth/user-not-found':'That email and password don’t match an account.',
+  'auth/invalid-login-credentials':'That email and password don’t match an account.',
+  'auth/email-already-in-use':'An account with that email already exists. Sign in instead.',
+  'auth/weak-password':'Use a password with at least 8 characters.',
+  'auth/invalid-email':'Check the email address and try again.',
+  'auth/missing-password':'Enter your password.',
+  'auth/unauthorized-domain':'This web address isn’t approved for sign-in yet. Add it in Firebase under Authentication, Settings, Authorized domains.',
+  'auth/operation-not-allowed':'This sign-in method isn’t turned on in Firebase yet.',
+  'auth/too-many-requests':'Too many attempts. Wait a minute and try again.',
+  'auth/network-request-failed':'No connection. Check your internet and try again.',
+  'auth/popup-closed-by-user':null, 'auth/cancelled-popup-request':null
+};
+function authError(e){
+  const c=(e&&e.code)||'', m=AUTH_MSG[c];
+  if(m===null) return;
+  S.authMsg=m||'Sign-in didn’t work. Try again.'; S.authOk=false; safeRender();
+}
+async function googleSignIn(){
+  if(!FB.auth){ return; }
+  const pv=new FB.a.GoogleAuthProvider();
+  try{ await FB.a.signInWithPopup(FB.auth,pv); }
+  catch(e){
+    const c=e&&e.code;
+    if(c==='auth/popup-blocked'||c==='auth/operation-not-supported-in-this-environment'){ try{ await FB.a.signInWithRedirect(FB.auth,pv); }catch(e2){ authError(e2); } }
+    else authError(e);
+  }
+}
+async function signOutAll(){
+  try{ if(S.unsub){ S.unsub(); S.unsub=null; } await FB.a.signOut(FB.auth); }catch(e){}
+  try{ await FB.f.terminate(FB.db); await FB.f.clearIndexedDbPersistence(FB.db); }catch(e){}
+  location.hash='today'; location.reload();
+}
+function saveFile(name,text,type){
+  const b=new Blob([text],{type:type||'text/plain'}), u=URL.createObjectURL(b), a=document.createElement('a');
+  a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),4000);
+}
+
+/* ---------- UI helpers ---------- */
+let toastT=null;
+function toast(msg){ const t=$('#toast'); t.textContent=msg; t.classList.add('show'); clearTimeout(toastT); toastT=setTimeout(()=>t.classList.remove('show'),3200); }
+function dialog({title,body,ok='OK',cancel='Cancel',danger=false}){
+  return new Promise(res=>{
+    const m=$('#modal'), okB=$('#m-ok'), cB=$('#m-cancel'), prev=document.activeElement;
+    $('#m-title').textContent=title; $('#m-body').innerHTML=body;
+    okB.textContent=ok; okB.className='btn '+(danger?'danger':'primary');
+    cB.textContent=cancel||''; cB.hidden=!cancel;
+    m.hidden=false;
+    const ta=m.querySelector('textarea'); if(ta){ ta.focus(); ta.select(); } else okB.focus();
+    const done=v=>{ m.hidden=true; okB.onclick=cB.onclick=null; m.onkeydown=null; if(prev&&prev.focus) prev.focus(); res(v); };
+    okB.onclick=()=>done(true); cB.onclick=()=>done(false);
+    m.onkeydown=e=>{ if(e.key==='Escape') done(false); };
+  });
+}
+function copyFallback(text,title){
+  return dialog({title:title||'Copy this text',body:'<p class="small muted">Copying was blocked here. Select the text below and copy it.</p><textarea id="m-copy" readonly>'+esc(text)+'</textarea>',ok:'Done',cancel:''});
+}
+async function copyText(text,msg){
+  try{ await navigator.clipboard.writeText(text); toast(msg||'Copied'); }
+  catch(e){ copyFallback(text); }
+}
+function isTyping(){
+  const a=document.activeElement; const v=$('#view');
+  if(!a||!v||!v.contains(a)) return false;
+  return a.tagName==='TEXTAREA'||a.tagName==='SELECT'||(a.tagName==='INPUT'&&!['checkbox','radio','button','submit'].includes(a.type));
+}
+function safeRender(){ if(isTyping()){ S.pendingRender=true; return; } render(); }
+
+/* ---------- dial ---------- */
+const pol=(cx,cy,r,a)=>{ const t=(a-90)*Math.PI/180; return [cx+r*Math.cos(t),cy+r*Math.sin(t)]; };
+function arc(cx,cy,r0,r1,a0,a1){
+  const [x0,y0]=pol(cx,cy,r1,a0),[x1,y1]=pol(cx,cy,r1,a1),[x2,y2]=pol(cx,cy,r0,a1),[x3,y3]=pol(cx,cy,r0,a0);
+  const lg=(a1-a0)>180?1:0, f=n=>n.toFixed(2);
+  return 'M'+f(x0)+','+f(y0)+'A'+r1+','+r1+' 0 '+lg+' 1 '+f(x1)+','+f(y1)+'L'+f(x2)+','+f(y2)+'A'+r0+','+r0+' 0 '+lg+' 0 '+f(x3)+','+f(y3)+'Z';
+}
+function arcLine(cx,cy,r,a0,a1){
+  const [x0,y0]=pol(cx,cy,r,a0),[x1,y1]=pol(cx,cy,r,a1), lg=(a1-a0)>180?1:0;
+  return 'M'+x0.toFixed(2)+','+y0.toFixed(2)+'A'+r+','+r+' 0 '+lg+' 1 '+x1.toFixed(2)+','+y1.toFixed(2);
+}
+function dialSVG(M,hw){
+  const {A,days,today,prefs}=M, cur=A.cur, c=160;
+  const N=Math.min(60,Math.max(A.avgLen,cur.cd,21));
+  const step=360/N, gap=N>40?.7:1.2;
+  let segs='',marks='',hwFrom=-1,hwTo=-1;
+  for(let i=0;i<N;i++){
+    const d=addDays(cur.start,i), e=days[d], a0=i*step+gap/2, a1=(i+1)*step-gap/2;
+    const fut=d>today, sc=dayScore(e), lv=level(sc), isT=d===today;
+    let r1,cls;
+    if(fut){ r1=107; cls='seg fut'; } else if(lv){ r1=110+lv*6; cls='seg l'+lv; } else { r1=107; cls='seg miss'; }
+    const tip=fmt(d,{weekday:'short',month:'short',day:'numeric'})+', cycle day '+(i+1)+(lv?', average '+sc.toFixed(1)+' ('+SCALE[lv-1]+')':fut?', upcoming':', not logged')+(e&&e.flow>=2?', bleeding':'');
+    segs+='<path class="'+cls+(isT?' now':'')+'" style="--i:'+i+'" d="'+arc(c,c,100,r1,a0,a1)+'"><title>'+esc(tip)+'</title></path>';
+    if(e&&(e.flow||0)>=1){ const [x,y]=pol(c,c,91,(a0+a1)/2); marks+=e.flow>=2?'<circle class="drop" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="3.6"/>':'<circle class="spot" cx="'+x.toFixed(1)+'" cy="'+y.toFixed(1)+'" r="3"/>'; }
+    if(hw&&d>=hw.from&&d<=hw.to){ if(hwFrom<0) hwFrom=i; hwTo=i; }
+  }
+  if(hwFrom>=0) marks+='<path class="hw'+(hw.personal?'':' est')+'" d="'+arcLine(c,c,153,hwFrom*step+1,(hwTo+1)*step-1)+'"/>';
+  const ov=Math.max((+prefs.periodLength||5)+2,(cur.len||A.avgLen)-14);
+  if(ov<=N){ const [x,y]=pol(c,c,91,(ov-.5)*step); marks+='<rect class="ovu" x="'+(x-3.2).toFixed(1)+'" y="'+(y-3.2).toFixed(1)+'" width="6.4" height="6.4" transform="rotate(45 '+x.toFixed(1)+' '+y.toFixed(1)+')"/>'; }
+  let nums='';
+  for(const n of [1,7,14,21,28,35,42]){ if(n>N) break; const [x,y]=pol(c,c,79,(n-.5)*step); nums+='<text class="dnum" x="'+x.toFixed(1)+'" y="'+(y+3.5).toFixed(1)+'" text-anchor="middle">'+n+'</text>'; }
+  const ti=clamp(cur.cd-1,0,N-1), ta=(ti+.5)*step;
+  const [nx,ny]=pol(c,c,159,ta),[lx,ly]=pol(c,c,167,ta-3.2),[rx,ry]=pol(c,c,167,ta+3.2);
+  const needle='<path class="needle" d="M'+nx.toFixed(1)+','+ny.toFixed(1)+'L'+lx.toFixed(1)+','+ly.toFixed(1)+'L'+rx.toFixed(1)+','+ry.toFixed(1)+'Z"/>';
+  const ofLine=cur.until<0?'past your usual '+A.avgLen:'of about '+(cur.len||A.avgLen);
+  return '<svg class="dial" viewBox="0 0 320 320" role="img" aria-label="Cycle dial. Day '+cur.cd+' '+ofLine+'. '+esc(cur.phase.label)+'.">'
+    +segs+marks+nums+needle
+    +'<text class="dl-k" x="160" y="122" text-anchor="middle">CYCLE DAY</text>'
+    +'<text class="dl-n" x="160" y="186" text-anchor="middle">'+cur.cd+'</text>'
+    +'<text class="dl-s" x="160" y="210" text-anchor="middle">'+esc(ofLine)+'</text></svg>';
+}
+function expectLine(A){
+  const c=A.cur; if(!c) return '';
+  const d=fmt(c.anchor,{weekday:'short',month:'short',day:'numeric'});
+  if(c.until>1) return 'Period expected in about '+c.until+' days ('+d+')';
+  if(c.until===1) return 'Period expected tomorrow';
+  if(c.until===0) return 'Period expected today';
+  return 'Period expected '+plural(-c.until,'day')+' ago, on '+d+'. Cycles vary.';
+}
+
+/* ---------- views ---------- */
+function weekStrip(M){
+  let h='';
+  for(let i=6;i>=0;i--){
+    const d=addDays(M.today,-i), e=M.days[d], sc=dayScore(e), lv=level(sc);
+    const lab=fmt(d,{weekday:'long',month:'short',day:'numeric'})+': '+(lv?'average '+sc.toFixed(1)+', '+SCALE[lv-1]:'not logged')+(e&&e.flow>=2?', bleeding':'')+'. Open the log for this day.';
+    h+='<button type="button" class="wk '+(lv?'l'+lv:'miss')+(i===0?' today':'')+'" data-act="go-log" data-date="'+d+'" aria-label="'+esc(lab)+'"><span class="wd">'+(i===0?'Today':fmt(d,{weekday:'short'}))+'</span><span class="wn">'+(lv||'–')+'</span>'+(e&&e.flow>=2?'<span class="dropmk" aria-hidden="true"></span>':'')+'</button>';
+  }
+  return '<section class="card"><div class="row between"><h2>Last 7 days</h2><a href="#patterns" class="small">See patterns</a></div><div class="week">'+h+'</div><p class="small muted">Each number is that day’s average rating from 1 to 6. A drop marks bleeding. Tap a day to log or edit it.</p></section>';
+}
+function onboard(M){
+  const opts=Array.from({length:30},(_,i)=>i+18).map(n=>'<option value="'+n+'"'+(n===(+M.prefs.cycleLength||28)?' selected':'')+'>'+n+' days</option>').join('');
+  const stale=M.A.stale;
+  return '<section class="card"><p class="eyebrow">'+(stale?'Pick up where you left off':'Set up your cycle')+'</p>'
+   +'<h1 tabindex="-1">'+(stale?'When did your latest period start?':'Start your tide chart')+'</h1>'
+   +'<p>'+(stale?'Your last logged period started '+fmtY(M.A.starts[M.A.starts.length-1])+'. Add your most recent start date so each day lands in the right place.':'Tell Tidemark when your last period started. It places each day you log in your cycle, then learns your real pattern as you go.')+'</p>'
+   +'<form id="setup-form" class="stack-sm"><div class="grid2">'
+   +'<div class="field"><label for="su-start">First day of your last period</label><input type="date" id="su-start" max="'+M.today+'" required></div>'
+   +'<div class="field"><label for="su-len">Usual cycle length</label><select id="su-len">'+opts+'</select><span class="small muted">Not sure? Leave it at 28.</span></div>'
+   +'</div><div class="row"><button class="btn primary" type="submit">Start tracking</button><button type="button" class="btn" data-act="go-log" data-date="'+M.today+'">Just log today</button></div></form></section>';
+}
+function viewToday(M){
+  const {A,today,prefs}=M, cur=A.cur;
+  if(!cur) return onboard(M)+weekStrip(M);
+  const hw=hardWindow(A);
+  const legend='<ul class="legend">'
+   +'<li><span class="ramp" aria-hidden="true">'+[1,2,3,4,5,6].map(n=>'<i style="height:'+(4+n*1.6)+'px;background:var(--sev'+n+')"></i>').join('')+'</span>Taller, darker = harder day</li>'
+   +'<li><svg viewBox="0 0 20 14" aria-hidden="true"><circle class="drop" cx="6" cy="7" r="4"/><circle class="spot" cx="15" cy="7" r="3"/></svg>Bleeding, spotting</li>'
+   +'<li><svg viewBox="0 0 20 14" aria-hidden="true"><rect class="ovu" x="6.5" y="3.5" width="7" height="7" transform="rotate(45 10 7)"/></svg>Ovulation (est.)</li>'
+   +'<li><svg viewBox="0 0 20 14" aria-hidden="true"><path class="hw'+(hw.personal?'':' est')+'" d="M2 7H18"/></svg>'+(hw.personal?'Your usual harder days':'Premenstrual week (est.)')+'</li></ul>';
+  const hi=prefs.name?'<p class="muted">Hi, '+esc(prefs.name)+'.</p>':'';
+  return '<div class="today"><section class="card dialcard" aria-labelledby="t-h">'
+   +'<h1 id="t-h" tabindex="-1">'+fmt(today,{weekday:'long',month:'long',day:'numeric'})+'</h1>'+hi
+   +'<div class="dialwrap">'+dialSVG(M,hw)+'</div>'
+   +'<div class="phase"><span class="pill ph-'+cur.phase.key+'"><span class="dot" aria-hidden="true"></span>'+esc(cur.phase.label)+'</span><p class="small">'+esc(expectLine(A))+'</p><p class="small muted">Based on '+(A.complete.length?'your '+A.avgLen+'-day average':'a '+A.avgLen+'-day cycle')+'</p></div>'
+   +legend+'</section><div class="stack">'
+   +safetyCard(M)+logCard(M)+letterCard(M,hw)+planCard(M,hw)+txCard(M)+weekStrip(M)+'</div></div>';
+}
+function safetyCard(M){
+  if(!M.prefs.safety) return '';
+  let recent=null;
+  for(let i=0;i<3;i++){ const d=addDays(M.today,-i), e=M.days[d]; if(e&&(e.safety||0)>=1){recent=d;break;} }
+  if(!recent) return '';
+  return '<section class="card support"><h2>You logged thoughts of hurting yourself '+(recent===M.today?'today':'recently')+'</h2><p>You deserve support now, not only once this passes. In the US you can call or text 988 any time.</p><div class="row"><a class="btn danger" href="#help">Get help now</a></div></section>';
+}
+function logCard(M){
+  const e=M.days[M.today];
+  if(e&&e.s){
+    const sc=dayScore(e), lv=level(sc);
+    return '<section class="card"><div class="row between"><div><p class="eyebrow">Today</p><h2>Logged, average '+sc.toFixed(1)+' ('+SCALE[lv-1].toLowerCase()+')</h2></div><button type="button" class="btn sm" data-act="go-log" data-date="'+M.today+'">Edit today</button></div></section>';
+  }
+  return '<section class="card"><p class="eyebrow">Today</p><h2>How are you doing today?</h2><p class="muted">A daily log takes about a minute. Two full cycles of daily ratings give a clinician the clearest picture.</p><div class="row"><button type="button" class="btn primary" data-act="go-log" data-date="'+M.today+'">Log today</button></div></section>';
+}
+function letterCard(M,hw){
+  const L=M.letter; if(!L||!L.text||!hw) return '';
+  if(!(M.today>=hw.from&&M.today<=addDays(hw.to,3))) return '';
+  return '<section class="card letter"><p class="eyebrow">A note from you, written on a better day</p><blockquote>'+esc(L.text)+'</blockquote><a href="#journal" class="small">Edit your note</a></section>';
+}
+function planCard(M,hw){
+  const {A,today}=M, cur=A.cur; if(!cur||!hw) return '';
+  const toWin=diffDays(hw.from,today);
+  const basis=hw.personal?'In your tracked cycles, symptoms usually climbed about '+(-hw.k)+' days before your period.':'Until you’ve tracked a full cycle, Tidemark uses the typical premenstrual week.';
+  if(toWin>0) return '<section class="card"><p class="eyebrow">Plan ahead</p><h2>Harder days may start around '+fmt(hw.from,{weekday:'short',month:'short',day:'numeric'})+'</h2><p>'+basis+' That’s '+plural(toWin,'day')+' from now.</p><ul class="ticks"><li>Move what you can off those days</li><li>Tell someone you trust which dates to watch</li><li>Plan easy meals and extra rest</li></ul></section>';
+  if(today<=addDays(hw.to,3)) return '<section class="card"><p class="eyebrow">Plan ahead</p><h2>You’re in your usual harder stretch</h2><p>'+basis+' For most people with PMDD, symptoms ease within a few days after the period starts. Keep plans light where you can.</p></section>';
+  return '<section class="card"><p class="eyebrow">Plan ahead</p><h2>Your period is later than usual</h2><p>Cycle length varies. Log bleeding on the day it starts so your next predictions stay accurate.</p></section>';
+}
+function txCard(M){
+  const {tx,A,days,today}=M; if(!tx.length||!A.cur) return '';
+  const rows=tx.map(t=>{
+    let line;
+    if(t.schedule==='luteal'){
+      const st=addDays(A.cur.anchor,-14);
+      if(today<st) line='Start around '+fmt(st,{weekday:'short',month:'short',day:'numeric'})+', about two weeks before your expected period, if that’s your prescriber’s plan.';
+      else line='Luteal window now. Logged '+countMed(days,t.id,st,today)+' of '+(diffDays(today,st)+1)+' days.';
+    } else if(t.schedule==='daily') line='Logged '+countMed(days,t.id,addDays(today,-6),today)+' of the last 7 days.';
+    else line='Logged '+plural(countMed(days,t.id,A.cur.start,today),'time')+' this cycle.';
+    return '<li><span><strong>'+esc(t.name)+(t.dose?' '+esc(t.dose):'')+'</strong><br><span class="small muted">'+esc(line)+'</span></span></li>';
+  }).join('');
+  return '<section class="card"><div class="row between"><h2>Treatments</h2><a href="#care" class="small">Manage</a></div><ul class="ticks">'+rows+'</ul></section>';
+}
+
+function blankDraft(date){ return {date,flow:0,mood:null,s:{},imp:{},safety:0,meds:[],note:''}; }
+function ensureDraft(M){
+  if(S.draft&&S.draft.date===S.logDate) return;
+  const e=S.demo?null:M.days[S.logDate];
+  S.draft=e?Object.assign(blankDraft(S.logDate),clone(e),{date:S.logDate}):blankDraft(S.logDate);
+  if(!S.draft.imp) S.draft.imp={}; if(!S.draft.meds) S.draft.meds=[];
+}
+function chips(kind,labels,sel){
+  return labels.map((l,i)=>'<button type="button" id="c-'+kind+'-'+i+'" class="chip'+(kind==='flow'&&i>0?' flow':'')+'" data-act="pick" data-kind="'+kind+'" data-v="'+i+'" aria-pressed="'+(sel===i)+'">'+esc(l)+'</button>').join('');
+}
+function rateRow(kind,key,label,val){
+  let b='';
+  for(let v=1;v<=6;v++) b+='<button type="button" id="r-'+kind+'-'+key+'-'+v+'" class="rt'+(val===v?' on l'+v:'')+'" data-act="rate" data-kind="'+kind+'" data-k="'+key+'" data-v="'+v+'" aria-pressed="'+(val===v)+'" aria-label="'+esc(label)+': '+v+', '+SCALE[v-1]+'">'+v+'</button>';
+  return '<div class="rrow" data-row="'+kind+'-'+key+'"><div class="rlab"><span>'+esc(label)+'</span><span class="rval">'+(val?val+' · '+SCALE[val-1]:'')+'</span></div><div class="scale">'+b+'</div></div>';
+}
+function scaleKey(){ return '<div class="key" aria-hidden="true">'+SCALE.map((s,i)=>'<span class="l'+(i+1)+'"><b>'+(i+1)+'</b>'+s+'</span>').join('')+'</div>'; }
+function viewLog(M){
+  ensureDraft(M);
+  const d=S.draft, date=S.logDate, isToday=date===M.today, ci=cycleInfo(M.A,date,M.prefs);
+  const saved=!S.demo&&M.days[date]&&M.days[date].s;
+  const ctx=ci?'Cycle day '+ci.cd+' · '+ci.phase.label:'Add your period start to see cycle days';
+  const meds=M.tx.length&&!S.demo?'<div class="meds">'+M.tx.map(t=>'<label class="check" for="med-'+esc(t.id)+'"><input type="checkbox" id="med-'+esc(t.id)+'" data-med="'+esc(t.id)+'"'+(d.meds.includes(t.id)?' checked':'')+'><span><strong>'+esc(t.name)+'</strong>'+(t.dose?' '+esc(t.dose):'')+' <span class="small muted">· '+esc(SCHED[t.schedule]||'')+'</span></span></label>').join('')+'</div>'
+    :'<p class="muted">No treatments yet. <a href="#care">Add medicines, supplements or habits</a> to check them off each day.</p>';
+  return (S.demo?'<p class="bn info">You’re logging your own first entry. The example data won’t be copied into your log.</p>':'')
+   +'<div class="loghead"><button type="button" class="iconbtn" id="log-prev" data-act="log-step" data-step="-1" aria-label="Previous day">‹</button>'
+   +'<div class="lh-mid"><h1 tabindex="-1">'+(isToday?'Today':fmt(date,{weekday:'long'}))+'<span class="lh-date">'+fmt(date,{month:'long',day:'numeric',year:'numeric'})+'</span></h1><p class="small muted">'+esc(ctx)+(saved?' · saved':'')+'</p></div>'
+   +'<button type="button" class="iconbtn" id="log-next" data-act="log-step" data-step="1" aria-label="Next day"'+(isToday?' disabled':'')+'>›</button></div>'
+   +'<div class="row jump small"><label for="log-date" class="muted">Jump to a date</label><input type="date" id="log-date" value="'+date+'" max="'+M.today+'"></div>'
+   +'<section class="card"><h2 id="fl-h">Bleeding</h2><div class="chips" role="group" aria-labelledby="fl-h" id="grp-flow">'+chips('flow',FLOW,d.flow||0)+'</div><p class="small muted">The first day of light or heavier bleeding starts a new cycle. Spotting doesn’t.</p></section>'
+   +'<section class="card"><h2 id="mood-h">Overall mood</h2><div class="chips" role="group" aria-labelledby="mood-h" id="grp-mood">'+chips('mood',MOODS,d.mood?d.mood-1:null)+'</div></section>'
+   +'<section class="card"><div class="stack-sm"><h2>Symptoms</h2><p class="small muted">Rate how much you felt each one today. The 1 to 6 scale matches the DRSP, the daily chart clinicians use for PMDD.</p>'+scaleKey()+'</div>'
+   +GROUPS.map(g=>'<h3 class="gh">'+g.title+'</h3><div>'+SYMPTOMS.filter(s=>s.g===g.id).map(s=>rateRow('s',s.k,s.label,d.s[s.k])).join('')+'</div>').join('')+'</section>'
+   +'<section class="card"><div class="stack-sm"><h2>Impact on your day</h2><p class="small muted">How much did these symptoms get in the way today?</p></div><div>'+IMPACT.map(i=>rateRow('imp',i.k,i.label,d.imp[i.k])).join('')+'</div></section>'
+   +(M.prefs.safety?'<section class="card"><h2 id="sf-h">Thoughts of suicide or self-harm</h2><p class="small muted">Private to you. If you mark either option, Tidemark shows ways to reach someone right away.</p><div class="chips" role="group" aria-labelledby="sf-h" id="grp-safety">'+chips('safety',SAFETY,d.safety||0)+'</div></section>':'')
+   +'<section class="card"><h2>Treatments taken</h2>'+meds+'</section>'
+   +'<section class="card"><h2><label for="log-note">Notes</label></h2><textarea id="log-note" maxlength="2000" placeholder="Triggers, sleep, what helped, anything else about the day">'+esc(d.note)+'</textarea></section>'
+   +(saved?'<div class="row"><button type="button" class="btn sm" data-act="log-delete">Delete this day’s entry</button></div>':'')
+   +'<div class="savebar"><p class="small muted">Symptoms you skip save as 1, not at all.</p><button type="button" class="btn primary" id="log-save" data-act="log-save">Save '+(isToday?'today':fmt(date))+'</button></div>';
+}
+
+function heatmap(M){
+  const {A,days,today}=M; if(!A.cycles.length) return '<p class="muted">Log the first day of your period to start your cycle map.</p>';
+  const rows=A.cycles.slice(-8).reverse();
+  const curLen=A.cur?Math.max(A.avgLen,A.cur.cd):A.avgLen;
+  const maxL=clamp(Math.max(...rows.map(c=>c.len||curLen)),21,45);
+  const end=S.align==='end';
+  let head='<tr><th scope="col" class="rh">Cycle</th>', br='<tr class="br" aria-hidden="true"><td></td>';
+  for(let j=1;j<=maxL;j++){ const lab=end?j-maxL-1:j; const hl=end?lab>=-7:(lab>=4&&lab<=10); head+='<th scope="col" class="ch'+(hl?' hl':'')+'">'+(end?'−'+(-lab):lab)+'</th>'; }
+  if(end) br+='<td colspan="'+(maxL-7)+'"></td><td colspan="7" class="brk">Premenstrual week</td>';
+  else br+='<td colspan="3"></td><td colspan="7" class="brk">After-period week</td><td colspan="'+Math.max(0,maxL-10)+'"></td>';
+  head+='</tr>'; br+='</tr>';
+  let body='';
+  for(const c of rows){
+    const anchor=end?(c.next||(A.cur&&A.cur.start===c.start?A.cur.anchor:addDays(c.start,A.avgLen))):c.start;
+    const isCur=!c.next;
+    body+='<tr><th scope="row">'+fmt(c.start)+'<small>'+(c.len?c.len+' days':(A.cur&&A.cur.start===c.start?'now, day '+A.cur.cd:'open'))+'</small></th>';
+    for(let j=1;j<=maxL;j++){
+      const d=end?addDays(anchor,j-maxL-1):addDays(c.start,j-1);
+      const inC=d>=c.start&&(c.next?d<c.next:true);
+      if(!inC){ body+='<td class="hc out"></td>'; continue; }
+      const e=days[d], cd=diffDays(d,c.start)+1;
+      if(d>today){ body+='<td class="hc fut" title="'+esc(fmt(d)+', day '+cd+', upcoming')+'"></td>'; continue; }
+      const sc=dayScore(e), lv=level(sc), fl=e&&e.flow>=2?' p':e&&e.flow===1?' sp':'';
+      const t=fmt(d)+', day '+cd+(lv?', average '+sc.toFixed(1):', not logged')+(fl===' p'?', bleeding':fl?', spotting':'');
+      body+='<td class="hc '+(lv?'l'+lv:'miss')+fl+(d===today?' now':'')+'" title="'+esc(t)+'"><span class="sr-only">'+esc(t)+'</span><span aria-hidden="true">'+(lv||'·')+'</span></td>';
+    }
+    body+='</tr>';
+    if(isCur&&end) {}
+  }
+  return '<div class="heatwrap" id="heatwrap" tabindex="0" aria-label="Cycle map, scrolls sideways"><table class="heat"><caption class="sr-only">Daily average rating for each cycle</caption><thead>'+br+head+'</thead><tbody>'+body+'</tbody></table></div>';
+}
+function cycleCard(c,M){
+  const st=c.stats;
+  const P={strong:['▲▲','Full premenstrual pattern'],some:['▲','Some premenstrual change'],little:['–','Little cyclical change'],insufficient:['…','Needs more ratings']}[st.pattern];
+  const w=v=>v==null?0:((v-1)/5*100).toFixed(0);
+  const elev=st.groups.filter(g=>g.elevated).map(g=>DSM.find(x=>x.id===g.id));
+  const md=medsInCycle(M.days,M.tx,c);
+  return '<article class="card cyc"><div class="row between"><h3>'+fmt(c.start)+' to '+fmt(addDays(c.next,-1))+'</h3><span class="pill pat-'+st.pattern+'"><span class="gl" aria-hidden="true">'+P[0]+'</span>'+P[1]+'</span></div>'
+   +'<p class="small muted">'+c.len+' days · '+c.logged+' of '+c.len+' days rated</p>'
+   +(st.pre!=null&&st.post!=null?'<div class="cmp"><span>After period</span><div><div class="bar" style="width:'+w(st.post)+'%"></div></div><b>'+st.post.toFixed(1)+'</b><span>Before period</span><div><div class="bar pre" style="width:'+w(st.pre)+'%"></div></div><b>'+st.pre.toFixed(1)+'</b></div>'
+     +'<p class="small">'+(elev.length?elev.length+' of 11 symptom areas rose and then cleared'+(st.core?', including a core mood symptom':'')+'.':'No symptom area rose by the full amount.')+(st.impactDays?' Impact rated 4+ on '+plural(st.impactDays,'premenstrual day')+'.':'')+'</p>'
+     +(elev.length?'<div class="tags">'+elev.map(g=>'<span class="tag'+(g.core?' core':'')+'">'+esc(g.name)+(g.core?' ★':'')+'</span>').join('')+'</div>':'')
+    :'<p class="small muted">Rate at least 3 days in the week before the period and 3 on cycle days 4 to 10 to compare.</p>')
+   +(md.length?'<p class="small"><strong>Treatments:</strong> '+md.map(x=>esc(x.t.name)+' '+x.n+'d').join(', ')+'</p>':'')
+   +'</article>';
+}
+function viewPatterns(M){
+  const {A,days,today}=M;
+  let logged90=0; for(let i=0;i<90;i++){ const e=days[addDays(today,-i)]; if(e&&e.s) logged90++; }
+  const comp=A.complete, suff=comp.filter(c=>c.stats.pre!=null&&c.stats.post!=null), strong=suff.filter(c=>c.stats.pattern==='strong');
+  let h,b;
+  if(!comp.length){ h='Your first pattern check comes after one full cycle'; b='Rate every day from one period to the next. You’ve rated '+logged90+' of the last 90 days.'; }
+  else if(!suff.length){ h='Not enough ratings around your periods yet'; b='The check compares the week before each period with cycle days 4 to 10. Rate at least 3 days in each.'; }
+  else{
+    h='In '+strong.length+' of '+suff.length+' cycle'+(suff.length===1?'':'s')+', 5 or more symptom areas rose before your period and eased after';
+    b=strong.length>=2?'Each included a core mood symptom. This is the pattern clinicians look for when they consider PMDD. Only a clinician can diagnose it, so bring this page to your appointment.'
+     :suff.length<2?'Clinicians look for this across at least two cycles. Keep rating daily.'
+     :'Most of your cycles don’t show the full pattern. Your chart still matters: symptoms that get worse before your period but last all month can point to premenstrual exacerbation (PME), which a clinician can assess.';
+  }
+  const rises=suff.map(c=>c.stats.rise);
+  const shift=itemShift(days,comp).slice(0,8);
+  const pos=v=>((v-1)/5*100).toFixed(1)+'%';
+  const dumb=shift.length?'<section class="card"><div class="stack-sm"><h2>Symptoms that change most</h2><p class="small muted">Average rating after your period compared with the week before it, across tracked cycles.</p><div class="dbkey"><span><i style="border:2.5px solid var(--sev5)"></i>After-period week</span><span><i style="background:var(--sev6)"></i>Premenstrual week</span></div></div>'
+    +'<div class="dbhead" aria-hidden="true"><span></span><span class="ends"><span>1 Not at all</span><span>6 Extreme</span></span><span></span></div>'
+    +shift.map(x=>{ const lo=Math.min(x.pre,x.post), hi=Math.max(x.pre,x.post); return '<div class="db"><span class="lab">'+esc(x.label)+'</span><span class="nums">'+x.post.toFixed(1)+' → '+x.pre.toFixed(1)+'</span><div class="track" aria-hidden="true"><div class="bar" style="left:'+pos(lo)+';width:calc('+pos(hi)+' - '+pos(lo)+')"></div><span class="d post" style="left:'+pos(x.post)+'"></span><span class="d pre" style="left:'+pos(x.pre)+'"></span></div></div>'; }).join('')+'</section>':'';
+  return '<h1 tabindex="-1">Patterns</h1>'
+   +'<section class="card"><p class="eyebrow">Pattern check'+(S.demo?' · example data':'')+'</p><h2>'+esc(h)+'</h2><p>'+esc(b)+'</p>'
+   +'<div class="statrow"><div class="stat"><b>'+A.avgLen+' days</b><span>Average cycle</span></div><div class="stat"><b>'+comp.length+'</b><span>Full cycles tracked</span></div><div class="stat"><b>'+logged90+' of 90</b><span>Days rated recently</span></div><div class="stat"><b>'+(rises.length?(mean(rises)>=0?'+':'')+mean(rises).toFixed(1):'–')+'</b><span>Average rise before period</span></div></div>'
+   +'<p class="small muted">This check follows the published approach for daily PMDD ratings in a simplified form. It isn’t a diagnosis.</p></section>'
+   +'<section class="card"><div class="row between"><h2>Cycle map</h2><div class="seg2" role="group" aria-label="Line up cycles"><button type="button" data-act="align" data-v="end" aria-pressed="'+(S.align==='end')+'">Days before period</button><button type="button" data-act="align" data-v="start" aria-pressed="'+(S.align==='start')+'">From period start</button></div></div>'
+   +'<p class="small muted">Each row is a cycle. Each number is that day’s average rating. A rose bar marks bleeding, a dot marks a day you didn’t log.</p>'
+   +heatmap(M)+'</section>'
+   +'<section class="card"><h2>Last 90 days</h2><p class="small muted">Daily average rating. Rose columns are bleeding days.</p><div class="trend" id="trend"><div class="tip" id="tip"></div></div></section>'
+   +dumb
+   +(comp.length?'<section class="stack-sm"><h2>Before and after each period</h2><div class="cycles">'+comp.slice().reverse().map(c=>cycleCard(c,M)).join('')+'</div></section>':'')
+   +'<section class="card"><h2>Share with your clinician</h2><p>The summary lists each cycle’s before-and-after averages, the symptom areas that rose, your treatments, and any days you logged thoughts of self-harm. Notes and journal entries stay out.</p>'
+   +'<div class="row"><button type="button" class="btn primary" data-act="copy-summary">Copy summary</button>'+(S.dl?'<button type="button" class="btn" data-act="csv">Download CSV</button>':'<button type="button" class="btn" data-act="csv-copy">Copy CSV</button>')+'</div></section>';
+}
+function drawTrend(){
+  const el=$('#trend'); if(!el) return;
+  const M=model(), {days,today}=M;
+  const W=Math.max(280,Math.floor(el.clientWidth)), H=220, L=30, R=30, T=16, B=30, n=90;
+  const iw=W-L-R, ih=H-T-B, st=iw/(n-1), x=i=>L+i*st, y=v=>T+(6-v)*ih/5, start=addDays(today,-(n-1));
+  let g='',bands='',xl='';
+  for(let v=1;v<=6;v++) g+='<line class="grid" x1="'+L+'" x2="'+(W-R)+'" y1="'+y(v)+'" y2="'+y(v)+'"/><text class="ax" x="'+(L-8)+'" y="'+(y(v)+4)+'" text-anchor="end">'+v+'</text>';
+  const segs=[]; let cur=[], gap=0, lastPt=null;
+  for(let i=0;i<n;i++){
+    const d=addDays(start,i), e=days[d], sc=dayScore(e);
+    if(e&&e.flow>=2) bands+='<rect class="pband" x="'+(x(i)-st/2).toFixed(1)+'" y="'+T+'" width="'+st.toFixed(1)+'" height="'+ih+'"/>';
+    if(d.slice(8)==='01'||(i===0&&+d.slice(8)<24)) xl+='<text class="ax" x="'+x(i).toFixed(1)+'" y="'+(H-8)+'" text-anchor="'+(i===0?'start':'middle')+'">'+fmt(d,{month:'short'})+'</text>';
+    if(sc==null){ gap++; if(gap>2&&cur.length){ segs.push(cur); cur=[]; } continue; }
+    gap=0; cur.push([x(i),y(sc)]); lastPt=[x(i),y(sc),sc];
+  }
+  if(cur.length) segs.push(cur);
+  let area='',line='';
+  for(const s of segs){
+    const p=s.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join('L');
+    line+='<path class="tline" d="M'+p+'"/>';
+    area+='<path class="area" d="M'+s[0][0].toFixed(1)+','+y(1)+'L'+p+'L'+s[s.length-1][0].toFixed(1)+','+y(1)+'Z"/>';
+  }
+  const endp=lastPt?'<circle class="endpt" cx="'+lastPt[0].toFixed(1)+'" cy="'+lastPt[1].toFixed(1)+'" r="5"/><text class="endlab" x="'+(lastPt[0]+8).toFixed(1)+'" y="'+(lastPt[1]-8).toFixed(1)+'">'+lastPt[2].toFixed(1)+'</text>':'';
+  const empty=segs.length?'':'<text class="ax" x="'+(W/2)+'" y="'+(T+ih/2)+'" text-anchor="middle">Your daily ratings will appear here</text>';
+  el.querySelector('svg')&&el.querySelector('svg').remove();
+  el.insertAdjacentHTML('afterbegin','<svg width="'+W+'" height="'+H+'" viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Daily average rating for the last 90 days">'+g+bands+area+line+endp+xl+empty+'<line class="guide" id="tguide" x1="0" x2="0" y1="'+T+'" y2="'+(T+ih)+'" visibility="hidden"/><rect id="thit" x="'+L+'" y="0" width="'+iw+'" height="'+H+'" fill="transparent"/></svg>');
+  const tip=$('#tip'), guide=$('#tguide'), hit=$('#thit');
+  const show=ev=>{
+    const r=el.getBoundingClientRect(), px=ev.clientX-r.left, i=clamp(Math.round((px-L)/st),0,n-1), d=addDays(start,i), e=days[d], sc=dayScore(e);
+    guide.setAttribute('x1',x(i)); guide.setAttribute('x2',x(i)); guide.setAttribute('visibility','visible');
+    tip.style.display='block'; tip.style.left=clamp(x(i),70,W-70)+'px'; tip.style.top=(sc!=null?y(sc):T+ih/2)+'px';
+    tip.textContent=fmt(d,{weekday:'short',month:'short',day:'numeric'})+': '+(sc!=null?sc.toFixed(1)+' '+SCALE[level(sc)-1].toLowerCase():'not logged')+(e&&e.flow>=2?', bleeding':'');
+  };
+  hit.addEventListener('pointermove',show); hit.addEventListener('pointerdown',show);
+  hit.addEventListener('pointerleave',()=>{ tip.style.display='none'; guide.setAttribute('visibility','hidden'); });
+}
+
+function viewJournal(M){
+  const idx=S.promptIdx!=null?S.promptIdx:(Math.floor(parseD(M.today)/86400000)%PROMPTS.length+PROMPTS.length)%PROMPTS.length;
+  const prompt=PROMPTS[idx];
+  const L=M.letter;
+  const letter=S.letterEdit
+    ?'<section class="card letter"><h2><label for="letter-text">Note for your harder days</label></h2><p class="small muted">Write this on a good day. Tidemark shows it on your Today screen during your usual harder stretch.</p><textarea id="letter-text" maxlength="3000" placeholder="What do you want to hear when it gets heavy?">'+esc(S.letterDraft)+'</textarea><div class="row"><button type="button" class="btn primary" data-act="letter-save">Save note</button><button type="button" class="btn" data-act="letter-cancel">Cancel</button></div></section>'
+    :'<section class="card letter"><div class="row between"><h2>Note for your harder days</h2>'+(S.demo?'<span class="pill ex">Example</span>':'')+'</div>'+(L&&L.text?'<blockquote>'+esc(L.text)+'</blockquote>':'<p class="muted">Write yourself a note on a good day. Tidemark will show it to you during your usual harder stretch.</p>')+'<div class="row"><button type="button" class="btn sm" data-act="letter-edit">'+(L&&L.text&&!S.demo?'Edit note':'Write your note')+'</button></div></section>';
+  const editing=S.jdraft.editing?M.journal.find(j=>j.id===S.jdraft.editing):null;
+  const list=M.journal.length?M.journal.map(j=>{
+    const ci=cycleInfo(M.A,j.date,M.prefs);
+    return '<article class="entry"><div class="row between"><p class="small"><strong>'+fmt(j.date,{weekday:'short',month:'short',day:'numeric'})+'</strong>'+(ci?' · cycle day '+ci.cd+' · '+esc(ci.phase.label):'')+'</p>'+(S.demo?'<span class="pill ex">Example</span>':'<span class="row"><button type="button" class="linkbtn small" data-act="j-edit" data-id="'+esc(j.id)+'">Edit</button><button type="button" class="linkbtn small" data-act="j-del" data-id="'+esc(j.id)+'">Delete</button></span>')+'</div>'+(j.prompt?'<p class="pr">'+esc(j.prompt)+'</p>':'')+'<p class="txt">'+esc(j.text)+'</p></article>';
+  }).join(''):'<p class="muted">Your entries will appear here, tagged with the cycle day you wrote them.</p>';
+  return '<h1 tabindex="-1">Journal</h1>'
+   +'<section class="card"><p class="eyebrow">'+(editing?'Editing your entry from '+fmt(editing.date):'Today’s prompt')+'</p><p class="prompt">'+esc(editing?(editing.prompt||'Free write'):prompt)+'</p>'
+   +'<label for="j-text" class="sr-only">Journal entry</label><textarea id="j-text" maxlength="5000" placeholder="Write as much or as little as you like">'+esc(S.jdraft.text)+'</textarea>'
+   +'<div class="row"><button type="button" class="btn primary" data-act="j-save">'+(editing?'Save changes':'Save entry')+'</button>'+(editing?'<button type="button" class="btn" data-act="j-cancel">Cancel</button>':'<button type="button" class="btn" data-act="j-prompt">Another prompt</button>')+'</div></section>'
+   +letter
+   +'<section class="card"><h2>Past entries</h2>'+list+'</section>';
+}
+
+function viewCare(M){
+  const {tx,A,days,today}=M;
+  const kindOpts=v=>KINDS.map(k=>'<option'+(k===v?' selected':'')+'>'+k+'</option>').join('');
+  const schOpts=v=>Object.entries(SCHED).map(([k,l])=>'<option value="'+k+'"'+(k===v?' selected':'')+'>'+l+'</option>').join('');
+  const form=(t,id)=>'<form id="'+id+'" class="stack-sm" data-id="'+esc(t?t.id:'')+'"><div class="grid2">'
+    +'<div class="field"><label for="'+id+'-name">Name</label><input type="text" id="'+id+'-name" maxlength="60" required value="'+esc(t?t.name:'')+'" placeholder="e.g. Sertraline, magnesium, therapy"></div>'
+    +'<div class="field"><label for="'+id+'-dose">Dose or amount</label><input type="text" id="'+id+'-dose" maxlength="40" value="'+esc(t?t.dose:'')+'" placeholder="e.g. 50 mg, 30 min"></div>'
+    +'<div class="field"><label for="'+id+'-kind">Type</label><select id="'+id+'-kind">'+kindOpts(t?t.kind:'Medication')+'</select></div>'
+    +'<div class="field"><label for="'+id+'-sched">When you take it</label><select id="'+id+'-sched">'+schOpts(t?t.schedule:'daily')+'</select></div>'
+    +'</div><div class="row"><button type="submit" class="btn primary">'+(t?'Save changes':'Add to my list')+'</button>'+(t?'<button type="button" class="btn" data-act="tx-cancel">Cancel</button>':'')+'</div></form>';
+  const list=tx.length?tx.map(t=>{
+    if(S.txEdit===t.id) return '<div class="tx">'+form(t,'tx-edit')+'</div>';
+    const n=A.cur?countMed(days,t.id,A.cur.start,today):0;
+    return '<div class="tx"><div class="row between"><h3>'+esc(t.name)+(t.dose?' <span class="muted">'+esc(t.dose)+'</span>':'')+'</h3>'+(S.demo?'<span class="pill ex">Example</span>':'<span class="row"><button type="button" class="linkbtn small" data-act="tx-edit" data-id="'+esc(t.id)+'">Edit</button><button type="button" class="linkbtn small" data-act="tx-del" data-id="'+esc(t.id)+'">Remove</button></span>')+'</div>'
+     +'<div class="row"><span class="pill">'+esc(t.kind||'Medication')+'</span><span class="pill">'+esc(SCHED[t.schedule]||'')+'</span></div>'
+     +(A.cur?'<p class="small muted">Logged '+plural(n,'day')+' this cycle.</p>':'')+'</div>';
+  }).join(''):'<p class="muted">Nothing here yet. Add what you take or do for PMDD, and check it off in your daily log.</p>';
+  return '<h1 tabindex="-1">Care</h1>'
+   +'<section class="card"><h2>My treatments</h2>'+list+'</section>'
+   +'<section class="card"><h2>Add a treatment</h2><p class="small muted">Medicines, supplements, therapy or habits. Patterns shows which ones you took in each cycle, so you can see what changes your chart.</p>'+form(null,'tx-add')+'</section>'
+   +'<p class="foot">Tidemark only tracks what you take. Follow your prescriber’s instructions, and don’t start, stop or change a medicine without talking to them.</p>';
+}
+
+function viewLearn(){
+  const src=[
+    ['IAPMD: the DRSP and PMDD diagnosis','https://www.iapmd.org/drsp'],
+    ['IAPMD peer support','https://iapmd.org/peer-support'],
+    ['Evidence-based treatment of PMDD (J Clin Psychiatry, 2020)','https://www.psychiatrist.com/jcp/evidence-based-treatment-of-pmdd/'],
+    ['C-PASS: scoring daily ratings for DSM-5 PMDD','https://pmc.ncbi.nlm.nih.gov/articles/PMC5205545/'],
+    ['ICD-11 and DSM-5 criteria for PMDD','https://pmc.ncbi.nlm.nih.gov/articles/PMC10711063/']
+  ];
+  return '<div class="learn stack"><h1 tabindex="-1">About PMDD</h1>'
+   +'<section class="card"><h2>What PMDD is</h2><p>Premenstrual dysphoric disorder is a cyclical mood disorder. Symptoms build in the week or two before a period, ease within a few days after bleeding starts, and stay low until the next cycle. Research points to an unusual brain sensitivity to normal hormone shifts after ovulation, rather than abnormal hormone levels. DSM-5 lists PMDD as a depressive disorder, and its effect on work and relationships is comparable to other depressive disorders.</p></section>'
+   +'<section class="card"><h2>How it’s diagnosed</h2><p>There’s no blood test. A clinician reviews daily ratings from at least two cycles and looks for:</p><ul><li>5 or more of 11 symptoms in the week before your period, with at least one of mood swings, irritability or anger, depressed mood, or anxiety</li><li>Symptoms that improve within a few days after your period starts and are minimal the week after</li><li>Real distress, or interference with work, school, social life or relationships</li></ul><p>Tidemark’s ratings use the 1 to 6 scale of the DRSP (Daily Record of Severity of Problems), which IAPMD calls the gold standard for diagnosing PMDD. Many clinicians want two months of these ratings before they diagnose.</p></section>'
+   +'<section class="card"><h2>PMDD or PME?</h2><p>When depression, anxiety or another condition is present all month and gets worse before your period, that’s called premenstrual exacerbation (PME). Your cycle map helps tell them apart: with PMDD, the after-period week is mostly clear.</p></section>'
+   +'<section class="card"><h2>Treatments to ask about</h2><ul><li><strong>SSRIs</strong> are the first-line medicine. For PMDD they can work quickly, so some people take them only in the two weeks before their period instead of every day.</li><li><strong>Certain birth control pills</strong>, especially ones containing drospirenone, help some people. Evidence is mixed, so ask about the specific pill and schedule.</li><li><strong>Cognitive behavioral therapy</strong> has evidence for PMDD. Regular exercise and calcium may help alongside other treatment.</li><li><strong>Ovarian suppression</strong> with GnRH medicines is an option specialists consider for severe PMDD that doesn’t respond to other treatment.</li></ul><p>Log what you take in Care, and Patterns will show it next to each cycle.</p></section>'
+   +'<section class="card"><h2>Getting more from an appointment</h2><ul class="ticks"><li>Bring at least two cycles of daily ratings. Use Copy summary on the Patterns page.</li><li>List what you’ve tried, the dose, and for how long.</li><li>Say so if you have thoughts of suicide or self-harm, even if they only come before your period.</li></ul></section>'
+   +'<section class="card"><h2>Sources</h2><ul>'+src.map(s=>'<li><a href="'+s[1]+'" target="_blank" rel="noopener">'+esc(s[0])+'</a></li>').join('')+'</ul></section>'
+   +'<p class="foot">Tidemark is a self-tracking tool. It doesn’t diagnose or treat any condition. Talk with a clinician about your results.</p></div>';
+}
+function viewHelp(M){
+  const p=getPrefs(S.demo?{}:S.docs), cur=M.A.cur;
+  const ctx=cur&&!S.demo&&(cur.phase.key==='pre'||cur.phase.key==='late')?'<p class="small">Your period is '+(cur.until>=0?'expected in about '+plural(cur.until,'day'):'due')+'. For many people with PMDD, the worst eases within a few days after bleeding starts. What you feel right now is real, and so is the help on this page.</p>':'';
+  const person=p.supportName||p.supportPhone
+    ?'<section class="card hcard"><p class="eyebrow">Your person</p><p class="big">'+esc(p.supportName||'Support contact')+'</p>'+(p.supportPhone?'<p>'+esc(p.supportPhone)+'</p><div class="row"><a class="btn" href="tel:'+esc(p.supportPhone.replace(/[^\d+]/g,''))+'">Call</a><a class="btn" href="sms:'+esc(p.supportPhone.replace(/[^\d+]/g,''))+'">Text</a></div>':'')+'</section>'
+    :'<section class="card hcard"><p class="eyebrow">Your person</p><p>Add someone you trust in <a href="#prefs">Preferences</a> so their number is here when you need it.</p></section>';
+  return '<h1 tabindex="-1">Help now</h1>'
+   +(S.helpNote?'<section class="card support"><h2>Thank you for logging that honestly</h2><p>You don’t have to handle these thoughts alone. Please reach out to one of the options below now.</p></section>':'<p class="muted" style="max-width:65ch">You don’t have to get through this alone. If you’re struggling, reach out to one of these now.</p>')
+   +ctx
+   +'<div class="helpgrid">'
+   +'<section class="card hcard urgent"><p class="eyebrow">In danger right now</p><p class="big">911</p><p>Call 911 or your local emergency number.</p><div class="row"><a class="btn danger" href="tel:911">Call 911</a></div></section>'
+   +'<section class="card hcard urgent"><p class="eyebrow">988 Suicide &amp; Crisis Lifeline (US)</p><p class="big">988</p><p>Call or text 988. Free and open 24 hours a day. You can also chat at 988lifeline.org.</p><div class="row"><a class="btn danger" href="tel:988">Call 988</a><a class="btn" href="sms:988">Text 988</a><a class="btn" href="https://988lifeline.org" target="_blank" rel="noopener">Chat</a></div></section>'
+   +'<section class="card hcard"><p class="eyebrow">Crisis Text Line (US and Canada)</p><p class="big">741741</p><p>Text HOME to 741741.</p><div class="row"><a class="btn" href="sms:741741?&body=HOME">Text HOME</a></div></section>'
+   +'<section class="card hcard"><p class="eyebrow">Outside the US</p><p>Find a free crisis line in your country at findahelpline.com.</p><div class="row"><a class="btn" href="https://findahelpline.com" target="_blank" rel="noopener">Find a helpline</a></div></section>'
+   +person
+   +'<section class="card hcard"><p class="eyebrow">PMDD peer support, not for emergencies</p><p>IAPMD runs free peer support and video groups led by people who live with PMDD. Email support@iapmd.org.</p><div class="row"><a class="btn" href="https://iapmd.org/peer-support" target="_blank" rel="noopener">IAPMD peer support</a></div></section>'
+   +'</div>'
+   +'<section class="card" style="align-items:center;text-align:center"><h2>Breathe with the circle</h2><div class="breathe" aria-hidden="true"></div><p class="small muted">In for 4 as it grows. Out for 6 as it shrinks. Repeat a few times.</p></section>';
+}
+function viewPrefs(M){
+  const p=getPrefs(S.docs);
+  const opt=(a,b,v,u)=>Array.from({length:b-a+1},(_,i)=>i+a).map(n=>'<option value="'+n+'"'+(n===+v?' selected':'')+'>'+n+' '+u+'</option>').join('');
+  const where={db:'Your log is saved to your private account, so it’s on every device where you sign in. A copy stays on this device so the app works offline. Only your account can read it through the app. Whoever runs this copy of Tidemark can reach the database through the Firebase console.',local:'Saved in this browser only, because Firebase isn’t set up for this copy of Tidemark yet. Clearing site data or switching devices loses it.',signedout:'You’re looking at example data. Sign in to save your own log.'}[S.mode]||'';
+  const acct=S.mode==='db'&&S.user?'<section class="card"><h2>Account</h2><p>Signed in as <strong>'+esc(S.user.email||S.user.name||'your account')+'</strong>.</p><p class="small muted">Signing out also clears the copy of your log stored on this device.</p><div class="row"><button type="button" class="btn" data-act="sign-out">Sign out</button></div></section>':'';
+  const install='<section class="card"><h2>Put Tidemark on your home screen</h2><p class="small">On iPhone, open this page in Safari, tap Share, then Add to Home Screen. On Android, open the Chrome menu and tap Install app or Add to Home screen.</p></section>';
+  return '<h1 tabindex="-1">Preferences</h1>'
+   +'<form id="prefs-form" class="card"><h2>Your cycle</h2><div class="grid2">'
+   +'<div class="field"><label for="pf-name">What should Tidemark call you? <span class="muted">(optional)</span></label><input type="text" id="pf-name" maxlength="40" value="'+esc(p.name)+'"></div>'
+   +'<div class="field"><label for="pf-len">Usual cycle length</label><select id="pf-len">'+opt(18,50,p.cycleLength,'days')+'</select><span class="small muted">Used until you’ve logged two periods.</span></div>'
+   +'<div class="field"><label for="pf-plen">Usual period length</label><select id="pf-plen">'+opt(2,10,p.periodLength,'days')+'</select></div>'
+   +'<div class="field"><label for="pf-start">Last period started <span class="muted">(if not logged)</span></label><input type="date" id="pf-start" max="'+M.today+'" value="'+esc(p.lastStart||'')+'"></div>'
+   +'</div><h2>Safety</h2><label class="check" for="pf-safety"><input type="checkbox" id="pf-safety"'+(p.safety?' checked':'')+'><span>Include a daily check for thoughts of suicide or self-harm</span></label>'
+   +'<p class="small muted">Some people with PMDD have these thoughts mainly before their period. Tracking them helps you and your clinician see the pattern, and Tidemark shows crisis support when you log them.</p>'
+   +'<div class="grid2"><div class="field"><label for="pf-sname">Someone you trust</label><input type="text" id="pf-sname" maxlength="40" value="'+esc(p.supportName)+'" placeholder="Name"></div>'
+   +'<div class="field"><label for="pf-sphone">Their phone number</label><input type="tel" id="pf-sphone" maxlength="24" value="'+esc(p.supportPhone)+'"></div></div>'
+   +'<div class="row"><button type="submit" class="btn primary">Save preferences</button></div></form>'
+   +'<section class="card"><h2>Your data</h2><p>'+where+'</p><div class="row">'
+   +(S.dl?'<button type="button" class="btn" data-act="csv">Download CSV</button>':'<button type="button" class="btn" data-act="csv-copy">Copy CSV</button>')
+   +'<button type="button" class="btn" data-act="copy-summary">Copy clinician summary</button>'
+   +(S.mode==='db'&&S.localHas?'<button type="button" class="btn" data-act="move-local">Move this device’s entries to my account</button>':'')
+   +(!hasReal(S.docs)&&S.demoOff?'<button type="button" class="btn" data-act="show-demo">Show example data</button>':'')
+   +(hasReal(S.docs)?'<button type="button" class="btn danger" data-act="delete-all">Delete all my data</button>':'')
+   +'</div></section>'
+   +acct+install
+   +'<p class="foot">Tidemark is a self-tracking tool. It doesn’t diagnose or treat any condition.</p>';
+}
+
+function viewAuth(){
+  const msg=S.authMsg?'<p class="authmsg'+(S.authOk?' ok':'')+'" role="alert">'+esc(S.authMsg)+'</p>':'';
+  return '<section class="card auth"><p class="eyebrow">Tidemark</p><h1 tabindex="-1">Sign in to keep your log</h1>'
+   +'<p>Your entries save to your own private account, so you can track from your phone, laptop or any browser, and they keep working offline.</p>'+msg
+   +'<button type="button" class="btn gbtn" data-act="google">Continue with Google</button>'
+   +'<div class="or">or use email</div>'
+   +'<form id="email-form" class="stack-sm" novalidate>'
+   +'<div class="field"><label for="au-email">Email</label><input type="email" id="au-email" autocomplete="email" required></div>'
+   +'<div class="field"><label for="au-pw">Password</label><input type="password" id="au-pw" autocomplete="current-password" minlength="8" required><span class="small muted">At least 8 characters.</span></div>'
+   +'<div class="row"><button type="submit" class="btn primary" data-mode="signin">Sign in</button><button type="submit" class="btn" data-mode="create">Create account</button></div>'
+   +'<button type="button" class="linkbtn small" data-act="reset-pw">Forgot your password?</button></form>'
+   +'<div class="or">not ready yet?</div>'
+   +'<button type="button" class="btn" data-act="preview">Look around with example data</button>'
+   +'<p class="small muted">Need support right now? <a href="#help">Help now</a> works without signing in. <a href="#learn">About PMDD</a></p></section>';
+}
+function viewLoading(){ return '<section class="card loading"><h1 tabindex="-1" style="font-size:1.25rem">Opening your log…</h1><p class="small muted">This takes a moment the first time on a new device.</p></section>'; }
+
+/* ---------- render ---------- */
+const VIEWS={today:viewToday,log:viewLog,patterns:viewPatterns,journal:viewJournal,care:viewCare,learn:viewLearn,help:viewHelp,prefs:viewPrefs};
+function bannerHTML(){
+  let h='';
+  if(S.demo&&S.route!=='help'&&S.route!=='learn'){
+    h+=S.mode==='signedout'
+      ?'<div class="bn"><span><strong>Example data.</strong> This is how three cycles of daily tracking look.</span><button type="button" class="btn sm primary" data-act="to-auth">Sign in to start your own</button></div>'
+      :'<div class="bn"><span><strong>Example data.</strong> This is how three cycles of daily tracking look. Your first save replaces it.</span><button type="button" class="btn sm primary" data-act="exit-demo">Start my own log</button></div>';
+  }
+  const msg={local:'Device-only mode: entries save in this browser until Firebase is set up. <a href="#prefs">Details</a>',fbfail:'The sign-in service didn’t load, so entries save in this browser for now. Check your connection and reload.',slow:'Showing what’s saved on this device. Changes sync when you’re back online.',offline:'Your log can’t sync right now. Changes stay on this device and sync when the connection returns.'}[S.banner];
+  if(msg&&!(S.banner==='local'&&S.route==='prefs')) h+='<div class="bn info"><span>'+msg+'</span></div>';
+  if(S.mode==='db'&&S.localHas&&S.route==='today') h+='<div class="bn info"><span>You have entries saved on this device.</span><button type="button" class="btn sm" data-act="move-local">Move them to my account</button></div>';
+  return h;
+}
+let ro=null;
+function render(){
+  S.pendingRender=false;
+  const M=model();
+  $('#banner').innerHTML=bannerHTML();
+  const open=S.route==='help'||S.route==='learn';
+  $('#view').innerHTML=(!open&&S.mode==='signedout'&&!S.preview)?viewAuth():(!open&&(S.mode==='connecting'||(S.mode==='boot'&&HAS_FB)))?viewLoading():VIEWS[S.route](M);
+  document.querySelectorAll('[data-nav]').forEach(a=>{ if(a.dataset.nav===S.route) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
+  if(ro){ ro.disconnect(); ro=null; }
+  if(S.route==='patterns'){
+    drawTrend();
+    const t=$('#trend'); if(t&&window.ResizeObserver){ let w=t.clientWidth; ro=new ResizeObserver(()=>{ if(Math.abs(t.clientWidth-w)>4){ w=t.clientWidth; drawTrend(); } }); ro.observe(t); }
+    const hw=$('#heatwrap'); if(hw&&S.align==='end') hw.scrollLeft=hw.scrollWidth;
+  }
+}
+function go(route){ if(location.hash.slice(1)===route){ S.route=route; render(); focusTop(); } else location.hash=route; }
+function focusTop(){ $('#main').scrollTop=0; const h=$('#view h1'); if(h) h.focus({preventScroll:true}); }
+window.addEventListener('hashchange',()=>{ const r=location.hash.slice(1); S.route=ROUTES.includes(r)?r:'today'; if(S.route!=='help') S.helpNote=false; render(); focusTop(); });
+
+/* ---------- actions ---------- */
+function rerenderGroup(kind){
+  const d=S.draft, el=$('#grp-'+kind); if(!el) return;
+  const sel=kind==='flow'?(d.flow||0):kind==='mood'?(d.mood?d.mood-1:null):(d.safety||0);
+  el.innerHTML=chips(kind,kind==='flow'?FLOW:kind==='mood'?MOODS:SAFETY,sel);
+}
+const ACT={
+  'go-log':t=>{ S.logDate=t.dataset.date; S.draft=null; go('log'); },
+  'log-step':t=>{ const d=addDays(S.logDate,+t.dataset.step); if(d>todayISO()) return; S.logDate=d; S.draft=null; render(); focusTop(); },
+  pick:t=>{
+    const k=t.dataset.kind, v=+t.dataset.v, d=S.draft;
+    if(k==='flow') d.flow=v; else if(k==='mood') d.mood=(d.mood===v+1?null:v+1); else d.safety=v;
+    rerenderGroup(k); const b=$('#c-'+k+'-'+v); if(b) b.focus();
+  },
+  rate:t=>{
+    const {kind,k}=t.dataset, v=+t.dataset.v, bag=kind==='s'?S.draft.s:S.draft.imp;
+    bag[k]=bag[k]===v?undefined:v;
+    const row=document.querySelector('[data-row="'+kind+'-'+k+'"]'), lab=(kind==='s'?SYMPTOMS:IMPACT).find(x=>x.k===k).label;
+    if(row){ row.outerHTML=rateRow(kind,k,lab,bag[k]); const b=$('#r-'+kind+'-'+k+'-'+v); if(b) b.focus(); }
+  },
+  'log-save':()=>{
+    const d=S.draft, M=model(); if(!d) return;
+    const s={}, imp={}; SYMPTOMS.forEach(x=>s[x.k]=d.s[x.k]||1); IMPACT.forEach(x=>imp[x.k]=d.imp[x.k]||1);
+    const safety=M.prefs.safety?(d.safety||0):0;
+    const entry={flow:d.flow||0,mood:d.mood||null,s,imp,safety,meds:(d.meds||[]).filter(id=>M.tx.some(t=>t.id===id)),note:String(d.note||'').slice(0,2000),updated:Date.now()};
+    const wasDemo=S.demo;
+    const p=writeDoc('days-'+d.date.slice(0,7),{d:{[d.date]:entry}},true); if(p===false) return;
+    S.draft=Object.assign(blankDraft(d.date),clone(entry),{date:d.date});
+    if(wasDemo){ setDemoOff(true); recompute(); }
+    if(safety>=1){ S.helpNote=true; go('help'); return; }
+    toast('Saved '+(d.date===todayISO()?'today':fmt(d.date)));
+    if(d.date===todayISO()) go('today'); else render();
+  },
+  'log-delete':async()=>{
+    const date=S.logDate;
+    if(!await dialog({title:'Delete '+fmt(date,{month:'long',day:'numeric'})+'?',body:'<p>This removes that day’s ratings, bleeding and notes. It can’t be undone.</p>',ok:'Delete',danger:true})) return;
+    const p=writeDoc('days-'+date.slice(0,7),{d:{[date]:null}},true); if(p===false) return;
+    S.draft=null; toast('Entry deleted'); render();
+  },
+  align:t=>{ S.align=t.dataset.v; render(); },
+  'copy-summary':()=>copyText(doctorSummary(model()),'Summary copied'),
+  'csv-copy':()=>copyText(buildCsv(model()),'CSV copied'),
+  csv:()=>{ const M=model(); saveFile('tidemark-log-'+M.today+'.csv',buildCsv(M),'text/csv'); toast('CSV downloaded'); },
+  google:()=>{ S.authMsg=''; googleSignIn(); },
+  'reset-pw':async()=>{
+    const em=($('#au-email')&&$('#au-email').value.trim())||'';
+    if(!em){ S.authMsg='Enter your email above, then tap Forgot your password again.'; S.authOk=false; render(); return; }
+    try{ await FB.a.sendPasswordResetEmail(FB.auth,em); S.authMsg='If that email has an account, a reset link is on its way.'; S.authOk=true; render(); }
+    catch(e){ authError(e); }
+  },
+  'sign-out':async()=>{ if(!await dialog({title:'Sign out?',body:'<p>Your log stays saved in your account. Signing out clears the copy on this device.</p>',ok:'Sign out'})) return; signOutAll(); },
+  preview:()=>{ S.preview=true; recompute(); go('today'); },
+  'to-auth':()=>{ S.preview=false; recompute(); go('today'); },
+  'exit-demo':()=>{ if(S.mode==='signedout'){ S.preview=false; recompute(); go('today'); return; } setDemoOff(true); S.draft=null; recompute(); go('today'); },
+  'show-demo':()=>{ setDemoOff(false); recompute(); go('today'); },
+  'j-prompt':()=>{ const cur=S.promptIdx!=null?S.promptIdx:(Math.floor(parseD(todayISO())/86400000)%PROMPTS.length+PROMPTS.length)%PROMPTS.length; S.promptIdx=(cur+1)%PROMPTS.length; render(); },
+  'j-save':()=>{
+    const M=model(), text=String(S.jdraft.text||'').trim(); if(!text){ toast('Write something first.'); $('#j-text')&&$('#j-text').focus(); return; }
+    const ex=S.jdraft.editing?M.journal.find(j=>j.id===S.jdraft.editing):null;
+    const id=ex?ex.id:'j'+Date.now().toString(36)+Math.random().toString(36).slice(2,6);
+    const idx=S.promptIdx!=null?S.promptIdx:(Math.floor(parseD(M.today)/86400000)%PROMPTS.length+PROMPTS.length)%PROMPTS.length;
+    const date=ex?ex.date:M.today;
+    const entry={id,date,text:text.slice(0,5000),prompt:ex?ex.prompt:PROMPTS[idx],created:ex?ex.created:Date.now(),updated:Date.now()};
+    const wasDemo=S.demo;
+    const p=writeDoc('journal-'+date.slice(0,7),{e:{[id]:entry}},true); if(p===false) return;
+    if(wasDemo){ setDemoOff(true); recompute(); }
+    S.jdraft={text:'',editing:null}; toast(ex?'Entry updated':'Entry saved'); render();
+  },
+  'j-edit':t=>{ const j=model().journal.find(x=>x.id===t.dataset.id); if(!j) return; S.jdraft={text:j.text,editing:j.id}; render(); focusTop(); const ta=$('#j-text'); if(ta) ta.focus(); },
+  'j-cancel':()=>{ S.jdraft={text:'',editing:null}; render(); },
+  'j-del':async t=>{
+    const j=model().journal.find(x=>x.id===t.dataset.id); if(!j) return;
+    if(!await dialog({title:'Delete this entry?',body:'<p>Your entry from '+esc(fmt(j.date,{month:'long',day:'numeric'}))+' will be removed. This can’t be undone.</p>',ok:'Delete',danger:true})) return;
+    const p=writeDoc('journal-'+j.date.slice(0,7),{e:{[j.id]:null}},true); if(p===false) return; toast('Entry deleted'); render();
+  },
+  'letter-edit':()=>{ const L=model().letter; S.letterDraft=(!S.demo&&L&&L.text)||''; S.letterEdit=true; render(); const ta=$('#letter-text'); if(ta) ta.focus(); },
+  'letter-cancel':()=>{ S.letterEdit=false; render(); },
+  'letter-save':()=>{
+    const text=String(S.letterDraft||'').trim(); const wasDemo=S.demo;
+    const p=text?writeDoc('letter',{text:text.slice(0,3000),updated:Date.now()},false):deleteDoc('letter'); if(p===false) return;
+    if(wasDemo){ setDemoOff(true); recompute(); }
+    S.letterEdit=false; toast(text?'Note saved':'Note removed'); render();
+  },
+  'tx-edit':t=>{ S.txEdit=t.dataset.id; render(); const i=$('#tx-edit-name'); if(i) i.focus(); },
+  'tx-cancel':()=>{ S.txEdit=null; render(); },
+  'tx-del':async t=>{
+    const items=getTx(S.docs), x=items.find(i=>i.id===t.dataset.id); if(!x) return;
+    if(!await dialog({title:'Remove '+esc(x.name)+'?',body:'<p>It comes off your list and your daily log. Days you already logged keep their record.</p>',ok:'Remove',danger:true})) return;
+    const p=writeDoc('treatments',{items:items.filter(i=>i.id!==x.id)},false); if(p===false) return; toast('Removed'); render();
+  },
+  'move-local':async()=>{
+    const local=loadLocal(); const ids=Object.keys(local); if(!ids.length){ S.localHas=false; render(); return; }
+    for(const id of ids){ const p=writeDoc(id,local[id],true); if(p===false) return; await p; }
+    clearLocal(); S.localHas=false; toast('Moved to your account'); render();
+  },
+  'delete-all':async()=>{
+    if(!await dialog({title:'Delete all your data?',body:'<p>This removes every daily entry, treatment, journal entry and preference saved '+(S.mode==='db'?'to your account':'on this device')+'. It can’t be undone. Download a CSV first if you want a copy.</p>',ok:'Delete everything',danger:true})) return;
+    const ids=Object.keys(S.docs); for(const id of ids) deleteDoc(id);
+    S.draft=null; setDemoOff(true); recompute(); toast('All your data was deleted'); go('today');
+  }
+};
+const SUB={
+  'email-form':async(f,sub)=>{
+    if(!FB.auth) return;
+    const em=$('#au-email').value.trim(), pw=$('#au-pw').value, create=sub&&sub.dataset.mode==='create';
+    if(!em||!pw){ S.authMsg='Enter your email and password.'; S.authOk=false; render(); return; }
+    if(create&&pw.length<8){ S.authMsg='Use a password with at least 8 characters.'; S.authOk=false; render(); return; }
+    S.authMsg=''; f.querySelectorAll('button').forEach(b=>b.disabled=true);
+    try{ create?await FB.a.createUserWithEmailAndPassword(FB.auth,em,pw):await FB.a.signInWithEmailAndPassword(FB.auth,em,pw); }
+    catch(e){ authError(e); }
+    finally{ f.querySelectorAll('button').forEach(b=>b.disabled=false); }
+  },
+  'setup-form':()=>{
+    const st=$('#su-start').value, len=+$('#su-len').value; if(!st||st>todayISO()){ toast('Pick a date on or before today.'); return; }
+    const p=writeDoc('prefs',Object.assign(getPrefs(S.docs),{lastStart:st,cycleLength:len}),false); if(p===false) return;
+    setDemoOff(true); recompute(); toast('Cycle set up'); render(); focusTop();
+  },
+  'prefs-form':()=>{
+    const st=$('#pf-start').value;
+    const prefs=Object.assign(getPrefs(S.docs),{name:$('#pf-name').value.trim().slice(0,40),cycleLength:+$('#pf-len').value,periodLength:+$('#pf-plen').value,lastStart:st&&st<=todayISO()?st:null,safety:$('#pf-safety').checked,supportName:$('#pf-sname').value.trim().slice(0,40),supportPhone:$('#pf-sphone').value.trim().slice(0,24)});
+    const wasDemo=S.demo; const p=writeDoc('prefs',prefs,false); if(p===false) return;
+    if(wasDemo){ setDemoOff(true); recompute(); }
+    toast('Preferences saved'); render();
+  },
+  'tx-add':f=>txSubmit(f,'tx-add'),
+  'tx-edit':f=>txSubmit(f,'tx-edit')
+};
+function txSubmit(f,id){
+  const name=$('#'+id+'-name').value.trim(); if(!name){ toast('Add a name first.'); return; }
+  const items=getTx(S.docs);
+  const t={id:f.dataset.id||('t'+Date.now().toString(36)+Math.random().toString(36).slice(2,5)),name:name.slice(0,60),dose:$('#'+id+'-dose').value.trim().slice(0,40),kind:$('#'+id+'-kind').value,schedule:$('#'+id+'-sched').value};
+  const next=f.dataset.id?items.map(i=>i.id===t.id?t:i):items.concat([t]);
+  const wasDemo=S.demo; const p=writeDoc('treatments',{items:next},false); if(p===false) return;
+  if(wasDemo){ setDemoOff(true); recompute(); }
+  S.txEdit=null; toast(f.dataset.id?'Saved':'Added '+t.name); render();
+}
+document.addEventListener('click',e=>{ const t=e.target.closest('[data-act]'); if(!t||t.disabled) return; const fn=ACT[t.dataset.act]; if(fn){ e.preventDefault(); fn(t,e); } });
+document.addEventListener('submit',e=>{ e.preventDefault(); const fn=SUB[e.target.id]; if(fn) fn(e.target,e.submitter); });
+document.addEventListener('input',e=>{ const t=e.target;
+  if(t.id==='log-note'&&S.draft) S.draft.note=t.value;
+  else if(t.id==='j-text') S.jdraft.text=t.value;
+  else if(t.id==='letter-text') S.letterDraft=t.value;
+});
+document.addEventListener('change',e=>{ const t=e.target;
+  if(t.id==='log-date'){ const v=t.value; if(v&&v<=todayISO()&&v!==S.logDate){ S.logDate=v; S.draft=null; t.blur(); render(); focusTop(); } }
+  else if(t.dataset&&t.dataset.med&&S.draft){ const id=t.dataset.med; S.draft.meds=S.draft.meds.filter(x=>x!==id); if(t.checked) S.draft.meds.push(id); }
+});
+document.addEventListener('focusout',()=>{ setTimeout(()=>{ if(S.pendingRender&&!isTyping()) render(); },0); });
+
+/* ---------- boot ---------- */
+S.mode=HAS_FB?'boot':'local';
+const r0=location.hash.slice(1); S.route=ROUTES.includes(r0)?r0:'today';
+recompute(); render(); initStorage();
+if('serviceWorker' in navigator&&location.protocol==='https:'){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
+</script>
+</body>
+</html>
