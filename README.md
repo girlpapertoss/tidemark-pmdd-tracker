@@ -67,6 +67,12 @@ This app stores sensitive health information, including optional answers about t
 
 Users can download all their entries as a CSV and delete all of their data from **Preferences**. Signing out also clears the offline copy stored on that device.
 
+**Delete my account** (Preferences → Account) asks the person to confirm with their password or Google sign-in, deletes every entry, then deletes the sign-in account. Apple and Google Play both require in-app account deletion for apps that let people create accounts. Google Play also needs a web page where people can ask for deletion without the app; the privacy policy's deletion section can serve as that page.
+
+## Reminders
+
+Preferences → **Reminders** adds a repeating daily check-in to Google Calendar, or downloads a calendar file for Apple Calendar or Outlook. Each comes with an alert at the chosen time. When a harder-days prediction exists, the same card can add a one-time heads-up two days before it. True push notifications need a server, such as Firebase Cloud Functions with Cloud Messaging on the paid Blaze plan, or local notifications in a native app store version.
+
 Tidemark is a self-tracking tool. It doesn't diagnose or treat any condition.
 
 ## Files

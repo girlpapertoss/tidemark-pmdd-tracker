@@ -769,7 +769,9 @@ async function initStorage(){
     FB.auth=au.getAuth(FB.app);
     try{ FB.db=fs.initializeFirestore(FB.app,{localCache:fs.persistentLocalCache({tabManager:fs.persistentMultipleTabManager()})}); }
     catch(e){ FB.db=fs.getFirestore(FB.app); }
-    au.getRedirectResult(FB.auth).catch(authError);
+    const pend=takeSession('tidemark.pendingDelete');
+    au.getRedirectResult(FB.auth).then(r=>{ if(pend&&r&&r.user&&r.user.uid===pend) finishDelete(r.user); })
+      .catch(e=>{ if(pend) deleteError(e); else authError(e); });
     au.onAuthStateChanged(FB.auth,onUser);
   }catch(e){ goLocal('fbfail'); }
 }
@@ -834,6 +836,110 @@ async function signOutAll(){
   try{ await FB.f.terminate(FB.db); await FB.f.clearIndexedDbPersistence(FB.db); }catch(e){}
   location.hash='today'; location.reload();
 }
+
+/* ---------- account deletion ---------- */
+function takeSession(k){ try{ const v=sessionStorage.getItem(k); sessionStorage.removeItem(k); return v; }catch(e){ return null; } }
+function clearAllLocal(){ try{ Object.keys(localStorage).filter(k=>k.startsWith('tidemark.')).forEach(k=>localStorage.removeItem(k)); }catch(e){} }
+const DEL_MSG={
+  'auth/wrong-password':'That password isn’t right. Nothing was deleted.',
+  'auth/invalid-credential':'That password isn’t right. Nothing was deleted.',
+  'auth/invalid-login-credentials':'That password isn’t right. Nothing was deleted.',
+  'auth/user-mismatch':'Choose the same Google account you use for Tidemark. Nothing was deleted.',
+  'auth/requires-recent-login':'For your security, sign out, sign back in, then try again.',
+  'auth/popup-blocked':'Your browser blocked the Google window. Allow pop-ups for this site and try again.',
+  'deadline-exceeded':'Tidemark couldn’t reach the server. Check your connection and try again.',
+  'unavailable':'Tidemark couldn’t reach the server. Check your connection and try again.',
+  'permission-denied':'Your entries couldn’t be deleted. Try again, or email support for help.'
+};
+function deleteError(e){
+  const c=(e&&e.code)||'';
+  if(c==='auth/popup-closed-by-user'||c==='auth/cancelled-popup-request') return;
+  toast(DEL_MSG[c]||AUTH_MSG[c]||'Your account couldn’t be deleted. Try again in a moment.');
+}
+/* Firebase only deletes an account after a recent sign-in, so ask the person to confirm it's them.
+   Returns true when confirmed, false when they cancel, 'redirect' when the page is leaving for Google. */
+async function reauth(user){
+  const ids=(user.providerData||[]).map(p=>p.providerId);
+  if(ids.includes('password')){
+    const ok=await dialog({title:'Confirm it’s you',body:'<p>Enter the password for <strong>'+esc(user.email||'your account')+'</strong> to delete your account.</p><div class="field"><label for="m-pw">Password</label><input type="password" id="m-pw" autocomplete="current-password"></div>',ok:'Delete my account',danger:true});
+    if(!ok) return false;
+    const pw=$('#m-pw').value; if(!pw){ toast('Enter your password to delete your account.'); return false; }
+    await FB.a.reauthenticateWithCredential(user,FB.a.EmailAuthProvider.credential(user.email,pw));
+    return true;
+  }
+  if(ids.includes('google.com')){
+    const ok=await dialog({title:'Confirm it’s you',body:'<p>Sign in with Google once more to delete your account.</p>',ok:'Continue with Google',danger:true});
+    if(!ok) return false;
+    const pv=new FB.a.GoogleAuthProvider();
+    try{ await FB.a.reauthenticateWithPopup(user,pv); return true; }
+    catch(e){
+      if(e&&(e.code==='auth/popup-blocked'||e.code==='auth/operation-not-supported-in-this-environment')){
+        try{ sessionStorage.setItem('tidemark.pendingDelete',user.uid); }catch(x){}
+        await FB.a.reauthenticateWithRedirect(user,pv); return 'redirect';
+      }
+      throw e;
+    }
+  }
+  return true;
+}
+function withTimeout(p,ms){ return Promise.race([p,new Promise((_,rej)=>setTimeout(()=>{ const e=new Error('timeout'); e.code='deadline-exceeded'; rej(e); },ms))]); }
+/* Entries go first, while the account can still pass the database rules; the sign-in account goes last. */
+async function finishDelete(user){
+  S.deleting=true; render();
+  try{
+    if(S.unsub){ try{ S.unsub(); }catch(e){} S.unsub=null; }
+    const snap=await withTimeout(FB.f.getDocs(FB.f.collection(FB.db,'users',user.uid,'docs')),15000);
+    const ids=new Set(snap.docs.map(d=>d.id)); Object.keys(S.docs||{}).forEach(id=>ids.add(id));
+    await withTimeout(Promise.all([...ids].map(id=>FB.f.deleteDoc(FB.f.doc(FB.db,'users',user.uid,'docs',id)))),20000);
+    await FB.a.deleteUser(user);
+  }catch(e){
+    S.deleting=false;
+    if(S.uid&&!S.unsub) subscribe();
+    deleteError(e); render(); return;
+  }
+  try{ await FB.f.terminate(FB.db); await FB.f.clearIndexedDbPersistence(FB.db); }catch(e){}
+  clearAllLocal();
+  try{ sessionStorage.setItem('tidemark.flash','Your account and all your entries were deleted.'); }catch(e){}
+  location.hash='today'; location.reload();
+}
+
+/* ---------- reminders (calendar events: no server or notification permission needed) ---------- */
+const APP_URL=location.origin+location.pathname;
+const pad2=n=>String(n).padStart(2,'0');
+function remTime(p){ const t=S.remTime||(p&&p.reminderTime)||'20:00'; return /^\d{2}:\d{2}$/.test(t)?t:'20:00'; }
+function icsStamp(d,t){ return d.replace(/-/g,'')+'T'+t.replace(':','')+'00'; }
+function icsText(s){ return String(s).replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\r?\n/g,'\\n'); }
+function icsFold(line){ const out=[]; let s=line; while(s.length>73){ out.push(s.slice(0,73)); s=' '+s.slice(73); } out.push(s); return out.join('\r\n'); }
+function addMin(t,m){ const [h,mi]=t.split(':').map(Number); const x=(h*60+mi+m)%1440; return pad2(Math.floor(x/60))+':'+pad2(x%60); }
+function remEvents(M,kind){
+  const t=remTime(M.prefs);
+  if(kind==='daily') return {uid:'checkin',title:'Tidemark check-in',desc:'Take a minute to log today.\n'+APP_URL+'#log',url:APP_URL+'#log',date:M.today,start:t,end:addMin(t,10),rrule:'FREQ=DAILY'};
+  const hw=hardWindow(M.A); if(!hw) return null;
+  const date=addDays(hw.from,-2)>M.today?addDays(hw.from,-2):M.today;
+  return {uid:'heads-up-'+hw.from,title:'Tidemark: harder days may start '+fmt(hw.from,{weekday:'short',month:'short',day:'numeric'}),desc:'Your usual harder stretch may start soon. Plan rest, move what you can, and tell someone you trust.\n'+APP_URL+'#today',url:APP_URL+'#today',date,start:'09:00',end:'09:15'};
+}
+function evEndDate(ev){ return ev.end<ev.start?addDays(ev.date,1):ev.date; }
+function buildIcs(ev){
+  const now=new Date(), z=now.getUTCFullYear()+pad2(now.getUTCMonth()+1)+pad2(now.getUTCDate())+'T'+pad2(now.getUTCHours())+pad2(now.getUTCMinutes())+pad2(now.getUTCSeconds())+'Z';
+  const L=['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Tidemark//PMDD tracker//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT',
+    'UID:tidemark-'+ev.uid+'-'+Date.now().toString(36)+'@tidemark','DTSTAMP:'+z,
+    'DTSTART:'+icsStamp(ev.date,ev.start),'DTEND:'+icsStamp(evEndDate(ev),ev.end)];
+  if(ev.rrule) L.push('RRULE:'+ev.rrule);
+  L.push('SUMMARY:'+icsText(ev.title),'DESCRIPTION:'+icsText(ev.desc),'URL:'+ev.url,'TRANSP:TRANSPARENT',
+    'BEGIN:VALARM','ACTION:DISPLAY','DESCRIPTION:'+icsText(ev.title),'TRIGGER:PT0S','END:VALARM','END:VEVENT','END:VCALENDAR');
+  return L.map(icsFold).join('\r\n')+'\r\n';
+}
+function gcalUrl(ev){
+  let tz=''; try{ tz=Intl.DateTimeFormat().resolvedOptions().timeZone||''; }catch(e){}
+  const q=new URLSearchParams({action:'TEMPLATE',text:ev.title,dates:icsStamp(ev.date,ev.start)+'/'+icsStamp(evEndDate(ev),ev.end),details:ev.desc});
+  if(tz) q.set('ctz',tz);
+  if(ev.rrule) q.set('recur','RRULE:'+ev.rrule);
+  return 'https://calendar.google.com/calendar/render?'+q.toString();
+}
+function saveRemTime(){
+  const t=remTime(getPrefs(S.docs));
+  if((S.mode==='db'||S.mode==='local')&&S.docs.prefs&&S.docs.prefs.reminderTime!==t) writeDoc('prefs',{reminderTime:t},true);
+}
 function saveFile(name,text,type){
   const b=new Blob([text],{type:type||'text/plain'}), u=URL.createObjectURL(b), a=document.createElement('a');
   a.href=u; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(u),4000);
@@ -849,10 +955,11 @@ function dialog({title,body,ok='OK',cancel='Cancel',danger=false}){
     okB.textContent=ok; okB.className='btn '+(danger?'danger':'primary');
     cB.textContent=cancel||''; cB.hidden=!cancel;
     m.hidden=false;
-    const ta=m.querySelector('textarea'); if(ta){ ta.focus(); ta.select(); } else okB.focus();
+    const ta=m.querySelector('textarea'), inp=m.querySelector('input');
+    if(ta){ ta.focus(); ta.select(); } else if(inp) inp.focus(); else okB.focus();
     const done=v=>{ m.hidden=true; okB.onclick=cB.onclick=null; m.onkeydown=null; if(prev&&prev.focus) prev.focus(); res(v); };
     okB.onclick=()=>done(true); cB.onclick=()=>done(false);
-    m.onkeydown=e=>{ if(e.key==='Escape') done(false); };
+    m.onkeydown=e=>{ if(e.key==='Escape') done(false); else if(e.key==='Enter'&&e.target.tagName==='INPUT'){ e.preventDefault(); done(true); } };
   });
 }
 function copyFallback(text,title){
@@ -1260,8 +1367,22 @@ function viewPrefs(M){
   const p=getPrefs(S.docs);
   const opt=(a,b,v,u)=>Array.from({length:b-a+1},(_,i)=>i+a).map(n=>'<option value="'+n+'"'+(n===+v?' selected':'')+'>'+n+' '+u+'</option>').join('');
   const where={db:'Your log is saved to your private account, so it’s on every device where you sign in. A copy stays on this device so the app works offline. Only your account can read it through the app. Whoever runs this copy of Tidemark can reach the database through the Firebase console.',local:'Saved in this browser only, because Firebase isn’t set up for this copy of Tidemark yet. Clearing site data or switching devices loses it.',signedout:'You’re looking at example data. Sign in to save your own log.'}[S.mode]||'';
-  const acct=S.mode==='db'&&S.user?'<section class="card"><h2>Account</h2><p>Signed in as <strong>'+esc(S.user.email||S.user.name||'your account')+'</strong>.</p><p class="small muted">Signing out also clears the copy of your log stored on this device.</p><div class="row"><button type="button" class="btn" data-act="sign-out">Sign out</button></div></section>':'';
+  const dis=S.deleting?' disabled':'';
+  const acct=S.mode==='db'&&S.user?'<section class="card" id="account"><h2>Account</h2><p>Signed in as <strong>'+esc(S.user.email||S.user.name||'your account')+'</strong>.</p><p class="small muted">Signing out also clears the copy of your log stored on this device.</p><div class="row"><button type="button" class="btn" data-act="sign-out"'+dis+'>Sign out</button></div>'
+   +'<h3 class="gh">Delete your account</h3><p class="small muted">Permanently deletes your account and every entry in it, on all your devices. Download a CSV first if you want a copy.</p>'
+   +(S.deleting?'<p role="status"><strong>Deleting your account…</strong> Keep this page open.</p>':'<div class="row"><button type="button" class="btn danger" data-act="delete-account">Delete my account</button></div>')
+   +'</section>':'';
   const install=installCard('prefs');
+  const rt=remTime(p), hw=!S.demo&&M.A&&M.A.cur?hardWindow(M.A):null, hwOk=hw&&hw.from>M.today;
+  const rem='<section class="card" id="reminders"><h2>Reminders</h2>'
+   +'<p>Tidemark can’t send phone notifications yet. Instead, add a repeating event to your calendar, and your calendar will remind you to log each day.</p>'
+   +'<div class="field" style="max-width:14rem"><label for="rem-time">Daily check-in time</label><input type="time" id="rem-time" value="'+esc(rt)+'"></div>'
+   +'<div class="row"><button type="button" class="btn" data-act="rem-gcal" data-kind="daily">Add to Google Calendar</button>'
+   +'<button type="button" class="btn" data-act="rem-ics" data-kind="daily">Apple or Outlook calendar</button></div>'
+   +'<p class="small muted">The Apple and Outlook option downloads a calendar file. On iPhone, open it and tap Add All. To stop the reminders, delete the event series in your calendar.</p>'
+   +(hwOk?'<h3 class="gh">Before your harder days</h3><p>Add a one-time heads-up two days before your harder days may start, around '+esc(fmt(hw.from,{weekday:'short',month:'short',day:'numeric'}))+'. Add a new one each cycle, since the dates shift as Tidemark learns your pattern.</p>'
+     +'<div class="row"><button type="button" class="btn" data-act="rem-gcal" data-kind="heads">Add to Google Calendar</button><button type="button" class="btn" data-act="rem-ics" data-kind="heads">Apple or Outlook calendar</button></div>':'')
+   +'</section>';
   return '<h1 tabindex="-1">Preferences</h1>'
    +'<form id="prefs-form" class="card"><h2>Your cycle</h2><div class="grid2">'
    +'<div class="field"><label for="pf-name">What should Tidemark call you? <span class="muted">(optional)</span></label><input type="text" id="pf-name" maxlength="40" value="'+esc(p.name)+'"></div>'
@@ -1273,6 +1394,7 @@ function viewPrefs(M){
    +'<div class="grid2"><div class="field"><label for="pf-sname">Someone you trust</label><input type="text" id="pf-sname" maxlength="40" value="'+esc(p.supportName)+'" placeholder="Name"></div>'
    +'<div class="field"><label for="pf-sphone">Their phone number</label><input type="tel" id="pf-sphone" maxlength="24" value="'+esc(p.supportPhone)+'"></div></div>'
    +'<div class="row"><button type="submit" class="btn primary">Save preferences</button></div></form>'
+   +rem
    +'<section class="card"><h2>Your data</h2><p>'+where+'</p><div class="row">'
    +(S.dl?'<button type="button" class="btn" data-act="csv">Download CSV</button>':'<button type="button" class="btn" data-act="csv-copy">Copy CSV</button>')
    +'<button type="button" class="btn" data-act="copy-summary">Copy clinician summary</button>'
@@ -1432,6 +1554,26 @@ const ACT={
     for(const id of ids){ const p=writeDoc(id,local[id],true); if(p===false) return; await p; }
     clearLocal(); S.localHas=false; toast('Moved to your account'); render();
   },
+  'rem-gcal':t=>{
+    const ev=remEvents(model(),t.dataset.kind); if(!ev) return;
+    if(t.dataset.kind==='daily') saveRemTime();
+    const a=document.createElement('a'); a.href=gcalUrl(ev); a.target='_blank'; a.rel='noopener';
+    document.body.appendChild(a); a.click(); a.remove();
+  },
+  'rem-ics':t=>{
+    const ev=remEvents(model(),t.dataset.kind); if(!ev) return;
+    if(t.dataset.kind==='daily') saveRemTime();
+    saveFile(t.dataset.kind==='daily'?'tidemark-daily-reminder.ics':'tidemark-heads-up.ics',buildIcs(ev),'text/calendar');
+    toast('Calendar file downloaded. Open it to add the reminder.');
+  },
+  'delete-account':async()=>{
+    const user=FB.auth&&FB.auth.currentUser;
+    if(!user){ toast('Sign in again, then try once more.'); return; }
+    if(navigator.onLine===false){ toast('Connect to the internet to delete your account.'); return; }
+    if(!await dialog({title:'Delete your account?',body:'<p>This permanently deletes your Tidemark account and everything in it: daily entries, journal, treatments, your note and settings. It can’t be undone.</p><p class="small muted">Want a copy first? Cancel, then tap Download CSV.</p>',ok:'Continue',danger:true})) return;
+    let r; try{ r=await reauth(user); }catch(e){ deleteError(e); return; }
+    if(r===true) await finishDelete(user);
+  },
   'delete-all':async()=>{
     if(!await dialog({title:'Delete all your data?',body:'<p>This removes every daily entry, treatment, journal entry and preference saved '+(S.mode==='db'?'to your account':'on this device')+'. It can’t be undone. Download a CSV first if you want a copy.</p>',ok:'Delete everything',danger:true})) return;
     const ids=Object.keys(S.docs); for(const id of ids) deleteDoc(id);
@@ -1479,6 +1621,7 @@ document.addEventListener('input',e=>{ const t=e.target;
   if(t.id==='log-note'&&S.draft) S.draft.note=t.value;
   else if(t.id==='j-text') S.jdraft.text=t.value;
   else if(t.id==='letter-text') S.letterDraft=t.value;
+  else if(t.id==='rem-time'&&/^\d{2}:\d{2}$/.test(t.value)) S.remTime=t.value;
 });
 document.addEventListener('change',e=>{ const t=e.target;
   if(t.id==='log-date'){ const v=t.value; if(v&&v<=todayISO()&&v!==S.logDate){ S.logDate=v; S.draft=null; t.blur(); render(); focusTop(); } }
@@ -1490,6 +1633,7 @@ document.addEventListener('focusout',()=>{ setTimeout(()=>{ if(S.pendingRender&&
 S.mode=HAS_FB?'boot':'local';
 const r0=location.hash.slice(1); S.route=ROUTES.includes(r0)?r0:'today';
 recompute(); render(); initStorage();
+{ const fl=takeSession('tidemark.flash'); if(fl) setTimeout(()=>toast(fl),300); }
 if('serviceWorker' in navigator&&location.protocol==='https:'){ window.addEventListener('load',()=>{ navigator.serviceWorker.register('sw.js').catch(()=>{}); }); }
 </script>
 </body>
