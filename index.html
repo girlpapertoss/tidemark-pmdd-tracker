@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Tidemark PMDD Tracker</title>
 <meta name="description" content="A private daily tracker for PMDD symptoms, cycles, treatments and patterns.">
 <meta name="theme-color" content="#17595F">
@@ -10,6 +10,8 @@
 <link rel="icon" href="icons/icon-192.png" type="image/png">
 <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
 <meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="Tidemark">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -67,7 +69,7 @@ h1:focus{outline:none}
 .stack-sm{display:flex;flex-direction:column;gap:.75rem}
 
 /* chrome */
-.top{order:0;display:flex;align-items:center;gap:.25rem;padding:.5rem .75rem .5rem 1rem;background:var(--surface);border-bottom:1px solid var(--line)}
+.top{order:0;display:flex;align-items:center;gap:.25rem;padding:max(.5rem,env(safe-area-inset-top)) max(.75rem,env(safe-area-inset-right)) .5rem max(1rem,env(safe-area-inset-left));background:var(--surface);border-bottom:1px solid var(--line)}
 .brand{display:flex;align-items:center;gap:.5rem;text-decoration:none;color:var(--ink);font:800 1.3125rem/1 var(--display);letter-spacing:-.03em;margin-right:auto}
 .brand svg{width:1.75rem;height:1.75rem}
 .hbtn{display:inline-flex;align-items:center;justify-content:center;gap:.375rem;min-height:2.75rem;min-width:2.75rem;padding:0 .625rem;border-radius:999px;color:var(--ink);text-decoration:none;font-weight:700;font-size:.9375rem}
@@ -77,7 +79,7 @@ h1:focus{outline:none}
 .helpbtn:hover{background:var(--rose);filter:brightness(1.08)}
 main{order:2;flex:1;overflow:auto;min-height:0}
 .wrap{max-width:64rem;margin:0 auto;padding:1rem 1rem 3rem;display:flex;flex-direction:column;gap:1rem}
-.tabs{order:3;display:flex;background:var(--surface);border-top:1px solid var(--line)}
+.tabs{order:3;display:flex;background:var(--surface);border-top:1px solid var(--line);padding:0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
 .tabs a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:.125rem;padding:.5rem .125rem .5rem;color:var(--muted);text-decoration:none;font-size:.8125rem;font-weight:700;min-height:3.5rem}
 .tabs svg{width:1.5rem;height:1.5rem}
 .tabs a[aria-current="page"]{color:var(--accent);box-shadow:inset 0 3px 0 var(--accent)}
@@ -121,7 +123,7 @@ ul.ticks li::before{content:"";flex:none;width:.5rem;height:.5rem;background:var
 #banner{max-width:64rem;margin:0 auto;padding:.75rem 1rem 0;display:flex;flex-direction:column;gap:.5rem}
 .bn{display:flex;flex-wrap:wrap;gap:.5rem .875rem;align-items:center;justify-content:space-between;padding:.625rem .875rem;border-radius:.75rem;border:1.5px dashed var(--accent);background:var(--accent-soft);font-size:.9375rem}
 .bn.info{border-style:solid;border-color:var(--line);background:var(--surface2)}
-#toast{position:fixed;left:50%;bottom:5rem;transform:translate(-50%,.75rem);opacity:0;transition:opacity .2s,transform .2s;background:var(--ink);color:var(--surface);padding:.625rem 1.125rem;border-radius:999px;font-weight:700;font-size:.9375rem;pointer-events:none;z-index:40;max-width:calc(100% - 2rem);text-align:center}
+#toast{position:fixed;left:50%;bottom:calc(5rem + env(safe-area-inset-bottom));transform:translate(-50%,.75rem);opacity:0;transition:opacity .2s,transform .2s;background:var(--ink);color:var(--surface);padding:.625rem 1.125rem;border-radius:999px;font-weight:700;font-size:.9375rem;pointer-events:none;z-index:40;max-width:calc(100% - 2rem);text-align:center}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 .modal{position:fixed;inset:0;background:rgba(4,10,14,.55);display:flex;align-items:flex-end;justify-content:center;z-index:50;padding:1rem}
 .modal[hidden]{display:none}
@@ -318,6 +320,11 @@ table.heat{border-collapse:separate;border-spacing:3px;font-variant-numeric:tabu
 .authmsg.ok{background:var(--accent-soft)}
 .gbtn{background:var(--surface);border-color:var(--ink)}
 .loading{max-width:30rem;margin:2rem auto;text-align:center;align-items:center}
+.install{border:1.5px solid var(--accent);background:var(--accent-soft)}
+.install .head{display:flex;gap:.875rem;align-items:center}
+.install .head img{width:3rem;height:3rem;border-radius:.75rem;flex:none}
+.install ol{margin:0;padding-left:1.25rem;display:flex;flex-direction:column;gap:.375rem}
+.shareglyph{display:inline-block;width:1.05em;height:1.05em;vertical-align:-.15em}
 </style>
 </head>
 <body>
@@ -935,7 +942,7 @@ function onboard(M){
 }
 function viewToday(M){
   const {A,today,prefs}=M, cur=A.cur;
-  if(!cur) return onboard(M)+weekStrip(M);
+  if(!cur) return onboard(M)+installCard('today')+weekStrip(M);
   const hw=hardWindow(A);
   const legend='<ul class="legend">'
    +'<li><span class="ramp" aria-hidden="true">'+[1,2,3,4,5,6].map(n=>'<i style="height:'+(4+n*1.6)+'px;background:var(--sev'+n+')"></i>').join('')+'</span>Taller, darker = harder day</li>'
@@ -948,7 +955,7 @@ function viewToday(M){
    +'<div class="dialwrap">'+dialSVG(M,hw)+'</div>'
    +'<div class="phase"><span class="pill ph-'+cur.phase.key+'"><span class="dot" aria-hidden="true"></span>'+esc(cur.phase.label)+'</span><p class="small">'+esc(expectLine(A))+'</p><p class="small muted">Based on '+(A.complete.length?'your '+A.avgLen+'-day average':'a '+A.avgLen+'-day cycle')+'</p></div>'
    +legend+'</section><div class="stack">'
-   +safetyCard(M)+logCard(M)+letterCard(M,hw)+planCard(M,hw)+txCard(M)+weekStrip(M)+'</div></div>';
+   +safetyCard(M)+logCard(M)+installCard('today')+letterCard(M,hw)+planCard(M,hw)+txCard(M)+weekStrip(M)+'</div></div>';
 }
 function safetyCard(M){
   if(!M.prefs.safety) return '';
@@ -957,6 +964,28 @@ function safetyCard(M){
   if(!recent) return '';
   return '<section class="card support"><h2>You logged thoughts of hurting yourself '+(recent===M.today?'today':'recently')+'</h2><p>You deserve support now, not only once this passes. In the US you can call or text 988 any time.</p><div class="row"><a class="btn danger" href="#help">Get help now</a></div></section>';
 }
+/* ---------- home screen install ---------- */
+const IS_IOS=/iphone|ipad|ipod/i.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+const IS_ANDROID=/android/i.test(navigator.userAgent);
+function isStandalone(){ try{ return window.matchMedia('(display-mode: standalone)').matches||navigator.standalone===true; }catch(e){ return false; } }
+let installPrompt=null;
+window.addEventListener('beforeinstallprompt',e=>{ e.preventDefault(); installPrompt=e; safeRender(); });
+window.addEventListener('appinstalled',()=>{ installPrompt=null; toast('Tidemark is on your home screen'); safeRender(); });
+function installDismissed(){ try{ return localStorage.getItem('tidemark.installDismissed')==='1'; }catch(e){ return false; } }
+const SHARE_SVG='<svg class="shareglyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7.5 7.5 12 3l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M8 10H6.5A1.5 1.5 0 0 0 5 11.5v8A1.5 1.5 0 0 0 6.5 21h11a1.5 1.5 0 0 0 1.5-1.5v-8A1.5 1.5 0 0 0 17.5 10H16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>';
+function installCard(where){
+  if(isStandalone()) return where==='prefs'?'<section class="card"><h2>Home screen app</h2><p class="small">You’re using Tidemark from your home screen. It opens full screen and keeps working offline.</p></section>':'';
+  if(where==='today'&&installDismissed()) return '';
+  const head='<div class="head"><img src="icons/icon-192.png" alt=""><div><h2>Put Tidemark on your home screen</h2><p class="small muted">It opens like an app, full screen, and works offline.</p></div></div>';
+  let body;
+  if(installPrompt) body='<div class="row"><button type="button" class="btn primary" data-act="install">Install Tidemark</button></div>';
+  else if(IS_IOS) body='<ol class="small"><li>Open this page in <strong>Safari</strong>.</li><li>Tap the <strong>Share</strong> button '+SHARE_SVG+' at the bottom of the screen.</li><li>Scroll down and tap <strong>Add to Home Screen</strong>, then <strong>Add</strong>.</li></ol>';
+  else if(IS_ANDROID) body='<ol class="small"><li>Open this page in <strong>Chrome</strong>.</li><li>Tap the <strong>⋮ menu</strong> in the top corner.</li><li>Tap <strong>Install app</strong> or <strong>Add to Home screen</strong>.</li></ol>';
+  else body='<p class="small">In Chrome or Edge, use the install icon at the right end of the address bar, or the browser menu’s <strong>Install</strong> option. On a phone, open this page in Safari (iPhone) or Chrome (Android).</p>';
+  const dismiss=where==='today'?'<button type="button" class="linkbtn small" data-act="install-dismiss">Not now</button>':'';
+  return '<section class="card install" aria-label="Install Tidemark">'+head+body+dismiss+'</section>';
+}
+
 function logCard(M){
   const e=M.days[M.today];
   if(e&&e.s){
@@ -1232,7 +1261,7 @@ function viewPrefs(M){
   const opt=(a,b,v,u)=>Array.from({length:b-a+1},(_,i)=>i+a).map(n=>'<option value="'+n+'"'+(n===+v?' selected':'')+'>'+n+' '+u+'</option>').join('');
   const where={db:'Your log is saved to your private account, so it’s on every device where you sign in. A copy stays on this device so the app works offline. Only your account can read it through the app. Whoever runs this copy of Tidemark can reach the database through the Firebase console.',local:'Saved in this browser only, because Firebase isn’t set up for this copy of Tidemark yet. Clearing site data or switching devices loses it.',signedout:'You’re looking at example data. Sign in to save your own log.'}[S.mode]||'';
   const acct=S.mode==='db'&&S.user?'<section class="card"><h2>Account</h2><p>Signed in as <strong>'+esc(S.user.email||S.user.name||'your account')+'</strong>.</p><p class="small muted">Signing out also clears the copy of your log stored on this device.</p><div class="row"><button type="button" class="btn" data-act="sign-out">Sign out</button></div></section>':'';
-  const install='<section class="card"><h2>Put Tidemark on your home screen</h2><p class="small">On iPhone, open this page in Safari, tap Share, then Add to Home Screen. On Android, open the Chrome menu and tap Install app or Add to Home screen.</p></section>';
+  const install=installCard('prefs');
   return '<h1 tabindex="-1">Preferences</h1>'
    +'<form id="prefs-form" class="card"><h2>Your cycle</h2><div class="grid2">'
    +'<div class="field"><label for="pf-name">What should Tidemark call you? <span class="muted">(optional)</span></label><input type="text" id="pf-name" maxlength="40" value="'+esc(p.name)+'"></div>'
@@ -1260,6 +1289,7 @@ function viewAuth(){
   return '<section class="card auth"><p class="eyebrow">Tidemark</p><h1 tabindex="-1">Sign in to keep your log</h1>'
    +'<p>Your entries save to your own private account, so you can track from your phone, laptop or any browser, and they keep working offline.</p>'+msg
    +'<button type="button" class="btn gbtn" data-act="google">Continue with Google</button>'
+   +(IS_IOS?'<p class="small muted">On iPhone, the home screen app keeps its own sign-in, separate from Safari. Email sign-in works most reliably there.</p>':'')
    +'<div class="or">or use email</div>'
    +'<form id="email-form" class="stack-sm" novalidate>'
    +'<div class="field"><label for="au-email">Email</label><input type="email" id="au-email" autocomplete="email" required></div>'
@@ -1357,6 +1387,8 @@ const ACT={
   },
   'sign-out':async()=>{ if(!await dialog({title:'Sign out?',body:'<p>Your log stays saved in your account. Signing out clears the copy on this device.</p>',ok:'Sign out'})) return; signOutAll(); },
   preview:()=>{ S.preview=true; recompute(); go('today'); },
+  install:async()=>{ if(!installPrompt) return; const pr=installPrompt; installPrompt=null; try{ pr.prompt(); await pr.userChoice; }catch(e){} render(); },
+  'install-dismiss':()=>{ try{ localStorage.setItem('tidemark.installDismissed','1'); }catch(e){} render(); },
   'to-auth':()=>{ S.preview=false; recompute(); go('today'); },
   'exit-demo':()=>{ if(S.mode==='signedout'){ S.preview=false; recompute(); go('today'); return; } setDemoOff(true); S.draft=null; recompute(); go('today'); },
   'show-demo':()=>{ setDemoOff(false); recompute(); go('today'); },
