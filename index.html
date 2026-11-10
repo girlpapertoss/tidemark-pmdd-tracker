@@ -677,6 +677,98 @@ function makeDemo(today){
   docs.letter={text:'Hey. If you are reading this, it is probably one of the heavy days.\n\nThe thoughts saying everything is ruined are loud right now, and they have been wrong every single time before. You have made it through every one of these stretches.\n\nEat something. Drink water. Text your sister. Go to bed early. You will feel like yourself again in a few days.\n\nLove, me (on a good Tuesday)',updated:0};
   return docs;
 }
+
+/* Moving a log between copies of Tidemark (for example from the Claude version, or another browser).
+   A backup is {app:'tidemark',kind:'backup',v:1,exported,docs}; the raw {docs} shape a browser stores also works.
+   Merging never deletes anything: a day or journal entry saved in both places keeps the more recently saved version,
+   treatments are matched by name and dose, and settings or the harder-days note only fill in what's missing. */
+const DOC_ID=/^(prefs|treatments|letter|days-\d{4}-\d{2}|journal-\d{4}-\d{2})$/;
+const DATE_RX=/^\d{4}-\d{2}-\d{2}$/;
+function parseBackup(text){
+  let o; try{ o=JSON.parse(String(text||'').trim()); }catch(e){ return null; }
+  const docs=o&&typeof o==='object'&&o.docs&&typeof o.docs==='object'?o.docs:null;
+  if(!docs) return null;
+  const out={};
+  for(const [id,doc] of Object.entries(docs)) if(DOC_ID.test(id)&&doc&&typeof doc==='object') out[id]=doc;
+  return out;
+}
+function cleanNum(v,lo,hi){ v=+v; return Number.isFinite(v)?clamp(Math.round(v),lo,hi):null; }
+function cleanDay(e,idMap){
+  if(!e||typeof e!=='object') return null;
+  const out={flow:cleanNum(e.flow,0,4)||0,mood:cleanNum(e.mood,1,5),safety:cleanNum(e.safety,0,2)||0,
+    meds:Array.isArray(e.meds)?[...new Set(e.meds.filter(m=>typeof m==='string').map(m=>idMap[m]||m))]:[],
+    note:String(e.note||'').slice(0,2000),updated:+e.updated||0};
+  if(e.s&&typeof e.s==='object'){ out.s={}; for(const it of SYMPTOMS) out.s[it.k]=cleanNum(e.s[it.k],1,6)||1; }
+  if(e.imp&&typeof e.imp==='object'){ out.imp={}; for(const it of IMPACT) out.imp[it.k]=cleanNum(e.imp[it.k],1,6)||1; }
+  if(!out.s&&!out.flow) return null;
+  return out;
+}
+function cleanJournal(j,id,month){
+  if(!j||typeof j.text!=='string'||!j.text.trim()||!DATE_RX.test(j.date||'')||j.date.slice(0,7)!==month) return null;
+  return {id:String(id).slice(0,40),date:j.date,text:j.text.slice(0,5000),prompt:String(j.prompt||'').slice(0,300),created:+j.created||0,updated:+j.updated||+j.created||0};
+}
+function cleanPrefs(p){
+  const o={cycleLength:clamp(+p.cycleLength||28,18,50),periodLength:clamp(+p.periodLength||5,2,10),safety:p.safety!==false,
+    name:String(p.name||'').slice(0,40),supportName:String(p.supportName||'').slice(0,40),supportPhone:String(p.supportPhone||'').slice(0,24),
+    lastStart:DATE_RX.test(p.lastStart||'')?p.lastStart:null};
+  if(/^\d{2}:\d{2}$/.test(p.reminderTime||'')) o.reminderTime=p.reminderTime;
+  return o;
+}
+/* Returns the writes that add `inc` to `cur`, plus counts for the confirmation message. */
+function planImport(cur,inc){
+  cur=cur||{}; inc=inc||{};
+  const writes=[], n={days:0,journal:0,tx:0,prefs:false,letter:false,kept:0,replaced:0};
+  const tkey=t=>String(t.name||'').trim().toLowerCase()+'|'+String(t.dose||'').trim().toLowerCase();
+  const curTx=getTx(cur), add=[], idMap={};
+  for(const t of getTx(inc)){
+    if(!t||typeof t.id!=='string'||!String(t.name||'').trim()) continue;
+    const same=curTx.find(c=>c.id===t.id)||curTx.find(c=>tkey(c)===tkey(t))||add.find(c=>tkey(c)===tkey(t));
+    if(same){ idMap[t.id]=same.id; continue; }
+    const nt={id:t.id.slice(0,40),name:String(t.name).trim().slice(0,60),dose:String(t.dose||'').trim().slice(0,40),kind:KINDS.includes(t.kind)?t.kind:'Medication',schedule:SCHED[t.schedule]?t.schedule:'daily'};
+    add.push(nt); idMap[t.id]=nt.id;
+  }
+  if(add.length){ writes.push({id:'treatments',body:{items:curTx.concat(add)},merge:false}); n.tx=add.length; }
+  for(const id of Object.keys(inc).sort()){
+    const doc=inc[id];
+    if(id.startsWith('days-')&&doc.d&&typeof doc.d==='object'){
+      const have=(cur[id]&&cur[id].d)||{}, patch={};
+      for(const [date,e] of Object.entries(doc.d)){
+        if(!DATE_RX.test(date)||date.slice(0,7)!==id.slice(5)) continue;
+        const ce=cleanDay(e,idMap); if(!ce) continue;
+        const h=have[date];
+        if(h&&(+h.updated||0)>=ce.updated){ n.kept++; continue; }
+        if(h) n.replaced++; else n.days++;
+        patch[date]=ce;
+      }
+      if(Object.keys(patch).length) writes.push({id,body:{d:patch},merge:true});
+    } else if(id.startsWith('journal-')&&doc.e&&typeof doc.e==='object'){
+      const have=(cur[id]&&cur[id].e)||{}, patch={};
+      for(const [jid,j] of Object.entries(doc.e)){
+        const cj=cleanJournal(j,jid,id.slice(8)); if(!cj) continue;
+        const h=have[cj.id];
+        if(h&&(+h.updated||+h.created||0)>=cj.updated){ n.kept++; continue; }
+        if(h) n.replaced++; else n.journal++;
+        patch[cj.id]=cj;
+      }
+      if(Object.keys(patch).length) writes.push({id,body:{e:patch},merge:true});
+    }
+  }
+  if(!cur.prefs&&inc.prefs){ writes.push({id:'prefs',body:cleanPrefs(inc.prefs),merge:false}); n.prefs=true; }
+  if(!(cur.letter&&cur.letter.text)&&inc.letter&&typeof inc.letter.text==='string'&&inc.letter.text.trim()){
+    writes.push({id:'letter',body:{text:inc.letter.text.slice(0,3000),updated:+inc.letter.updated||Date.now()},merge:false}); n.letter=true;
+  }
+  return {writes,n};
+}
+function importList(n){
+  const p=[];
+  if(n.days) p.push(plural(n.days,'day'));
+  if(n.replaced) p.push(n.replaced+' newer '+(n.replaced===1?'version':'versions')+' of entries you already had');
+  if(n.journal) p.push(n.journal===1?'1 journal entry':n.journal+' journal entries');
+  if(n.tx) p.push(plural(n.tx,'treatment'));
+  if(n.prefs) p.push('your cycle settings');
+  if(n.letter) p.push('your note for harder days');
+  return p.length<2?p.join(''):p.slice(0,-1).join(', ')+' and '+p[p.length-1];
+}
 </script>
 
 <script src="firebase-config.js"></script>
@@ -955,8 +1047,8 @@ function dialog({title,body,ok='OK',cancel='Cancel',danger=false}){
     okB.textContent=ok; okB.className='btn '+(danger?'danger':'primary');
     cB.textContent=cancel||''; cB.hidden=!cancel;
     m.hidden=false;
-    const ta=m.querySelector('textarea'), inp=m.querySelector('input');
-    if(ta){ ta.focus(); ta.select(); } else if(inp) inp.focus(); else okB.focus();
+    const first=m.querySelector('#m-body input, #m-body textarea');
+    if(first){ first.focus(); if(first.tagName==='TEXTAREA') first.select(); } else okB.focus();
     const done=v=>{ m.hidden=true; okB.onclick=cB.onclick=null; m.onkeydown=null; if(prev&&prev.focus) prev.focus(); res(v); };
     okB.onclick=()=>done(true); cB.onclick=()=>done(false);
     m.onkeydown=e=>{ if(e.key==='Escape') done(false); else if(e.key==='Enter'&&e.target.tagName==='INPUT'){ e.preventDefault(); done(true); } };
@@ -1374,6 +1466,9 @@ function viewPrefs(M){
    +'</section>':'';
   const install=installCard('prefs');
   const rt=remTime(p), hw=!S.demo&&M.A&&M.A.cur?hardWindow(M.A):null, hwOk=hw&&hw.from>M.today;
+  const imp=(S.mode==='db'||S.mode==='local')?'<section class="card" id="import"><h2>Bring in entries</h2>'
+   +'<p>Moving from Tidemark in Claude, or from another browser where you used Tidemark without signing in? In that copy, open Preferences and save a backup. Then bring it in here. Nothing in your log is deleted, and days saved in both places keep the most recent version.</p>'
+   +'<div class="row"><button type="button" class="btn'+(hasReal(S.docs)?'':' primary')+'" data-act="import">Bring in entries</button></div></section>':'';
   const rem='<section class="card" id="reminders"><h2>Reminders</h2>'
    +'<p>Tidemark can’t send phone notifications yet. Instead, add a repeating event to your calendar, and your calendar will remind you to log each day.</p>'
    +'<div class="field" style="max-width:14rem"><label for="rem-time">Daily check-in time</label><input type="time" id="rem-time" value="'+esc(rt)+'"></div>'
@@ -1384,6 +1479,7 @@ function viewPrefs(M){
      +'<div class="row"><button type="button" class="btn" data-act="rem-gcal" data-kind="heads">Add to Google Calendar</button><button type="button" class="btn" data-act="rem-ics" data-kind="heads">Apple or Outlook calendar</button></div>':'')
    +'</section>';
   return '<h1 tabindex="-1">Preferences</h1>'
+   +(hasReal(S.docs)?'':imp)
    +'<form id="prefs-form" class="card"><h2>Your cycle</h2><div class="grid2">'
    +'<div class="field"><label for="pf-name">What should Tidemark call you? <span class="muted">(optional)</span></label><input type="text" id="pf-name" maxlength="40" value="'+esc(p.name)+'"></div>'
    +'<div class="field"><label for="pf-len">Usual cycle length</label><select id="pf-len">'+opt(18,50,p.cycleLength,'days')+'</select><span class="small muted">Used until you’ve logged two periods.</span></div>'
@@ -1402,6 +1498,7 @@ function viewPrefs(M){
    +(!hasReal(S.docs)&&S.demoOff?'<button type="button" class="btn" data-act="show-demo">Show example data</button>':'')
    +(hasReal(S.docs)?'<button type="button" class="btn danger" data-act="delete-all">Delete all my data</button>':'')
    +'</div></section>'
+   +(hasReal(S.docs)?imp:'')
    +acct+install
    +'<p class="foot">Tidemark is a self-tracking tool. It doesn’t diagnose or treat any condition.</p>';
 }
@@ -1409,7 +1506,8 @@ function viewPrefs(M){
 function viewAuth(){
   const msg=S.authMsg?'<p class="authmsg'+(S.authOk?' ok':'')+'" role="alert">'+esc(S.authMsg)+'</p>':'';
   return '<section class="card auth"><p class="eyebrow">Tidemark</p><h1 tabindex="-1">Sign in to keep your log</h1>'
-   +'<p>Your entries save to your own private account, so you can track from your phone, laptop or any browser, and they keep working offline.</p>'+msg
+   +'<p>Your entries save to your own private account, so you can track from your phone, laptop or any browser, and they keep working offline.</p>'
+   +(S.route==='prefs'?'<p class="small muted">Moving your log from Tidemark in Claude? Sign in or create an account first. Preferences opens next, where you can bring in your entries.</p>':'')+msg
    +'<button type="button" class="btn gbtn" data-act="google">Continue with Google</button>'
    +(IS_IOS?'<p class="small muted">On iPhone, the home screen app keeps its own sign-in, separate from Safari. Email sign-in works most reliably there.</p>':'')
    +'<div class="or">or use email</div>'
@@ -1550,9 +1648,44 @@ const ACT={
     const p=writeDoc('treatments',{items:items.filter(i=>i.id!==x.id)},false); if(p===false) return; toast('Removed'); render();
   },
   'move-local':async()=>{
-    const local=loadLocal(); const ids=Object.keys(local); if(!ids.length){ S.localHas=false; render(); return; }
-    for(const id of ids){ const p=writeDoc(id,local[id],true); if(p===false) return; await p; }
+    const local=loadLocal(); if(!Object.keys(local).length){ S.localHas=false; render(); return; }
+    if(S.mode!=='db'){ toast('Still opening your log. Try again in a moment.'); return; }
+    const ps=applyImport(planImport(S.docs,local)); if(!ps) return;
+    const ok=(await Promise.all(ps)).every(Boolean);
+    if(!ok) return;
     clearLocal(); S.localHas=false; toast('Moved to your account'); render();
+  },
+  'import':async()=>{
+    if(S.mode!=='db'&&S.mode!=='local'){ toast('Still opening your log. Try again in a moment.'); return; }
+    const ok=await dialog({title:'Bring in entries',ok:'Continue',
+      body:'<p>Choose the backup file you saved from your other copy of Tidemark, or paste the backup code you copied.</p>'
+        +'<div class="field"><label for="m-file">Backup file</label><input type="file" id="m-file" accept=".json,application/json,text/plain"></div>'
+        +'<div class="field"><label for="m-code">Or paste the backup code</label><textarea id="m-code" spellcheck="false" autocomplete="off" autocapitalize="off" placeholder="Paste here"></textarea></div>'});
+    if(!ok) return;
+    const fi=$('#m-file'), file=fi&&fi.files&&fi.files[0];
+    let text=($('#m-code')||{}).value||'';
+    if(file){
+      if(file.size>8e6){ toast('That file is too large to be a Tidemark backup.'); return; }
+      try{ text=await file.text(); }catch(e){ toast('That file couldn’t be opened. Try pasting the backup code instead.'); return; }
+    }
+    if(!text.trim()){ toast('Choose a backup file or paste the backup code.'); return; }
+    const inc=parseBackup(text);
+    if(!inc||!hasReal(inc)){
+      await dialog({title:'That backup couldn’t be read',cancel:'',ok:'OK',body:'<p>Make sure you chose the file named like <strong>tidemark-backup-2026-11-10.json</strong>, or pasted the whole backup code. It starts with <code>{"app":"tidemark"</code>.</p>'});
+      return;
+    }
+    const plan=planImport(S.docs,inc);
+    if(!plan.writes.length){ toast('Everything in that backup is already in your log.'); return; }
+    const where=S.mode==='db'?'your account':'this device';
+    if(!await dialog({title:'Add these to your log?',ok:'Add to my log',
+      body:'<p>This adds '+esc(importList(plan.n))+' to '+where+'.</p>'
+        +(plan.n.kept?'<p class="small muted">'+(plan.n.kept===1?'1 entry':plan.n.kept+' entries')+' you already have here '+(plan.n.kept===1?'stays as it is':'stay as they are')+', because the copy here is the same or newer.</p>':'')
+        +'<p class="small muted">Nothing in your log is deleted.</p>'})) return;
+    const wasDemo=S.demo;
+    const ps=applyImport(plan); if(!ps) return;
+    if(wasDemo) setDemoOff(true);
+    S.draft=null; recompute(); toast('Added to your log'); go('today');
+    Promise.all(ps);
   },
   'rem-gcal':t=>{
     const ev=remEvents(model(),t.dataset.kind); if(!ev) return;
@@ -1606,6 +1739,13 @@ const SUB={
   'tx-add':f=>txSubmit(f,'tx-add'),
   'tx-edit':f=>txSubmit(f,'tx-edit')
 };
+/* Starts every write in an import plan; the screen updates at once and Firestore syncs them.
+   Returns the write promises, or null if nothing could be written. */
+function applyImport(plan){
+  const ps=[];
+  for(const w of plan.writes){ const p=writeDoc(w.id,w.body,w.merge); if(p===false) return ps.length?ps:null; ps.push(p); }
+  return ps;
+}
 function txSubmit(f,id){
   const name=$('#'+id+'-name').value.trim(); if(!name){ toast('Add a name first.'); return; }
   const items=getTx(S.docs);

@@ -1,6 +1,6 @@
 /* Tidemark service worker: keeps the app shell available offline.
    Your log itself is synced by Firestore, which this file never touches. */
-const CACHE = 'tidemark-v4';
+const CACHE = 'tidemark-v5';
 const SHELL = ['./', 'index.html', 'firebase-config.js', 'manifest.webmanifest',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png'];
 

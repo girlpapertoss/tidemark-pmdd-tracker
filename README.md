@@ -65,7 +65,9 @@ This app stores sensitive health information, including optional answers about t
 - **Keep the app free of trackers.** It ships with no analytics or advertising scripts.
 - **Know the breach rules.** Consumer health apps usually fall outside HIPAA, but the US FTC Health Breach Notification Rule can apply. It requires notifying people, the FTC and sometimes the media after a breach. State health-privacy laws may also apply. Get legal advice before opening the app to the public.
 
-Users can download all their entries as a CSV and delete all of their data from **Preferences**. Signing out also clears the offline copy stored on that device.
+Users can download all their entries as a CSV and delete all of their data from **Preferences**.
+
+**Bringing in entries** (Preferences → Bring in entries) adds a backup saved from another copy of Tidemark, such as the version shared in Claude, which keeps entries in the browser. The person picks the backup file or pastes the backup code. Nothing is deleted: a day or journal entry saved in both places keeps the most recently saved version, treatments are matched by name and dose, and settings and the harder-days note only fill in what's missing. Signing out also clears the offline copy stored on that device.
 
 **Delete my account** (Preferences → Account) asks the person to confirm with their password or Google sign-in, deletes every entry, then deletes the sign-in account. Apple and Google Play both require in-app account deletion for apps that let people create accounts. Google Play also needs a web page where people can ask for deletion without the app; the privacy policy's deletion section can serve as that page.
 
